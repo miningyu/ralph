@@ -1,0 +1,50 @@
+[
+  {
+    "id": "LIB-001",
+    "scope": "@your-org/auth",
+    "path": "packages/auth",
+    "kind": "library",
+    "description": "Add refresh-token rotation helper that invalidates the old token on use",
+    "acceptance": [
+      "rotateRefreshToken(oldToken) returns a new token and marks oldToken as revoked",
+      "Reusing a revoked token throws RevokedTokenError",
+      "Unit tests cover happy path, revoked replay, and expired token"
+    ],
+    "dependent_on": [],
+    "touches": ["@your-org/auth"],
+    "build_pass": false,
+    "qa_pass": false
+  },
+  {
+    "id": "API-014",
+    "scope": "api-service",
+    "path": "apps/api-service",
+    "kind": "backend",
+    "description": "Wire @your-org/auth refresh-token rotation into POST /auth/refresh",
+    "acceptance": [
+      "POST /auth/refresh returns 200 with a new {access, refresh} pair",
+      "Replaying an old refresh token returns 401 with code=TOKEN_REVOKED",
+      "Existing e2e auth suite still passes"
+    ],
+    "dependent_on": ["LIB-001"],
+    "touches": ["api-service", "@your-org/auth"],
+    "build_pass": false,
+    "qa_pass": false
+  },
+  {
+    "id": "WEB-007",
+    "scope": "web-app",
+    "path": "apps/web-app",
+    "kind": "frontend",
+    "description": "Show 'Session expired - please sign in again' toast when /auth/refresh returns TOKEN_REVOKED",
+    "acceptance": [
+      "On 401 TOKEN_REVOKED, the auth store clears and a toast appears",
+      "User is redirected to /login after the toast",
+      "Manual smoke via dev server confirms the flow"
+    ],
+    "dependent_on": ["API-014"],
+    "touches": ["web-app"],
+    "build_pass": false,
+    "qa_pass": false
+  }
+]

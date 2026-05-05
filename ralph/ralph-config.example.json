@@ -1,0 +1,53 @@
+{
+  "projectName": "your-project",
+  "packageManager": "pnpm",
+  "monorepoTool": "turbo",
+  "workspaces": {
+    "apps": [
+      { "name": "api-service",  "path": "apps/api-service",  "kind": "backend",  "framework": "nestjs",    "hasTests": true,  "hasE2E": true  },
+      { "name": "web-app",      "path": "apps/web-app",      "kind": "frontend", "framework": "sveltekit", "hasTests": false, "hasE2E": false }
+    ],
+    "packages": [
+      { "name": "@your-org/auth", "path": "packages/auth", "kind": "library" },
+      { "name": "@your-org/util", "path": "packages/util", "kind": "library" }
+    ]
+  },
+  "commands": {
+    "install":   "pnpm install --frozen-lockfile",
+    "lint":      "pnpm exec turbo run lint --filter={scope}",
+    "test":      "pnpm exec turbo run test --filter={scope}",
+    "testE2E":   "pnpm exec turbo run test:e2e --filter={scope}",
+    "build":     "pnpm exec turbo run build --filter={scope}...",
+    "typecheck": "pnpm exec turbo run check --filter={scope}",
+    "affected":  "pnpm exec turbo run lint test build --filter='...[HEAD^1]'"
+  },
+  "evaluator": {
+    "command": "claude -p --dangerously-skip-permissions --model claude-sonnet-4-6",
+    "maxRetries": 5,
+    "iterationTimeoutSeconds": 1800
+  },
+  "builder": {
+    "command": "claude -p --dangerously-skip-permissions --model claude-opus-4-7",
+    "iterationTimeoutSeconds": 1200
+  },
+  "runtime": {
+    "backend": {
+      "port": 3000,
+      "healthPath": "/health",
+      "devCommand": "pnpm --filter api-service run dev",
+      "logDir": "apps/api-service/logs/error",
+      "affectedScopes": ["api-service"],
+      "errorLogWhitelist": []
+    },
+    "frontend": {
+      "browserAgent": "playwright",
+      "devCommand": "pnpm run dev",
+      "previewUrl": "http://localhost:3001/",
+      "port": 3001
+    }
+  },
+  "guardrails": [
+    "Do not add new top-level workspaces; place new code under existing apps/* or packages/*",
+    "Do not introduce a second package manager"
+  ]
+}
