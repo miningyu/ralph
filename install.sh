@@ -2,12 +2,16 @@
 # Install ralph globally on this workstation.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="${RALPH_HOME:-$HOME/.ralph}"
 LINK_DIR="${HOME}/.local/bin"
 
 echo "Installing ralph to ${INSTALL_DIR}..."
 mkdir -p "${INSTALL_DIR}"
-cp -r bin scripts prompts templates VERSION "${INSTALL_DIR}/"
+if [ "${SCRIPT_DIR}" != "${INSTALL_DIR}" ]; then
+  cp -r "${SCRIPT_DIR}/bin" "${SCRIPT_DIR}/scripts" "${SCRIPT_DIR}/prompts" \
+        "${SCRIPT_DIR}/templates" "${SCRIPT_DIR}/VERSION" "${INSTALL_DIR}/"
+fi
 chmod +x "${INSTALL_DIR}/bin/ralph" "${INSTALL_DIR}/scripts/"*.sh
 
 mkdir -p "${LINK_DIR}"
