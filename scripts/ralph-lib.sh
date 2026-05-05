@@ -1,6 +1,5 @@
 #!/bin/bash
 # Shared utilities sourced by plan/build/qa/watchdog scripts.
-# Source this after `cd "$(dirname "$0")/.."` so ralph/ paths resolve correctly.
 
 # macOS compatibility: GNU timeout fallback
 if ! command -v timeout &>/dev/null; then

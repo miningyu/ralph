@@ -1,103 +1,90 @@
 # ralph
 
-Autonomous build loop for [Claude Code](https://claude.ai/code). Runs **plan → build → QA** in a self-correcting cycle using two Claude agents (builder + evaluator) with automatic retry and regression recovery.
+Autonomous build loop for [Claude Code](https://claude.ai/code). Runs **plan → build → QA** in a self-correcting cycle using two Claude agents — a builder and an independent evaluator.
 
 ```
-ralph-watchdog.sh
-  ├─ Phase 1: plan-ralph.sh    — refines tasks.json until .plan-complete
-  ├─ Phase 2: build-ralph.sh   — implements tasks until all are build_pass:true
-  └─ Phase 3: qa-ralph.sh      — validates tasks until all are qa_pass:true
-               └─ on failure → back to Phase 2 (rebuild with root-cause context)
+ralph run
+  ├─ Phase 1 (plan)   — structures requirements into tasks.json
+  ├─ Phase 2 (build)  — implements tasks until all are build_pass:true
+  └─ Phase 3 (qa)     — validates tasks until all are qa_pass:true
+               └─ on failure → back to Phase 2 with root-cause context
 ```
 
 ## Requirements
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (`claude`)
-- `bash`, `jq`, `curl`
-- `git` (commits are used for state persistence between iterations)
+- `bash`, `jq`, `curl`, `git`
 
-## Setup
+## Install
 
-**1. Copy ralph into your project root:**
 ```bash
-cp -r ralph/ your-project/ralph/
+git clone https://github.com/miningyu/ralph ~/.ralph
+~/.ralph/install.sh
 ```
 
-**2. Configure:**
+Then add to your shell profile if needed:
 ```bash
-cp ralph/ralph-config.example.json ralph/ralph-config.json
-# Edit ralph/ralph-config.json for your project
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**3. Write requirements (optional):**
+## Usage
+
 ```bash
-# Free-form requirements — the planner will structure them into tasks.json
-echo "Add user auth with JWT" >> ralph/tasks.raw.md
+cd your-project
+
+ralph init          # scaffold ralph/ralph-config.json
+# edit ralph/ralph-config.json for your project
+
+echo "Add JWT auth" >> ralph/tasks.raw.md
+ralph run           # plan → build → QA
 ```
 
-**4. Run:**
+Run phases individually:
 ```bash
-./ralph/ralph-watchdog.sh
-```
-
-Or run phases individually:
-```bash
-./ralph/plan-ralph.sh      # Phase 1 only
-./ralph/build-ralph.sh     # Phase 2 only
-./ralph/qa-ralph.sh        # Phase 3 only
+ralph plan          # phase 1 only
+ralph build         # phase 2 only
+ralph qa            # phase 3 only
+ralph reset         # archive current cycle, start fresh
 ```
 
 ## Configuration
 
-Copy `ralph/ralph-config.example.json` to `ralph/ralph-config.json` and fill in your project details. Key fields:
+`ralph init` creates `ralph/ralph-config.json` from the template. Key fields:
 
 | Field | Description |
 |-------|-------------|
 | `projectName` | Used in log messages |
 | `packageManager` | `pnpm`, `npm`, `yarn`, etc. |
-| `workspaces.apps[]` | App entries with name, path, kind (backend/frontend), test flags |
+| `workspaces.apps[]` | Apps with name, path, kind (backend/frontend), test flags |
 | `workspaces.packages[]` | Shared library entries |
-| `commands.*` | Build, lint, test, typecheck commands (`{scope}` is substituted at runtime) |
-| `evaluator.command` | Claude command for QA agent (Sonnet recommended) |
+| `commands.*` | Build, lint, test, typecheck commands (`{scope}` substituted at runtime) |
 | `builder.command` | Claude command for build agent (Opus recommended) |
+| `evaluator.command` | Claude command for QA agent (Sonnet recommended) |
 | `runtime.backend` | Port, health path, dev command for backend auto-restart |
 | `runtime.frontend` | Dev command, preview URL for browser-based QA |
-| `guardrails[]` | Hard rules injected into every agent prompt |
+| `guardrails[]` | Rules injected into every agent prompt |
 
-## Files
+See `templates/ralph-config.example.json` for a full example.
 
-| File | Purpose |
-|------|---------|
-| `ralph-watchdog.sh` | Top-level orchestrator — run this |
-| `plan-ralph.sh` | Phase 1: planner agent loop |
-| `build-ralph.sh` | Phase 2: builder agent loop |
-| `qa-ralph.sh` | Phase 3: evaluator agent loop |
-| `reset-ralph.sh` | Archive previous cycle state and start fresh |
-| `ralph-lib.sh` | Shared shell utilities |
-| `ralph-config.example.json` | Configuration template |
-| `tasks.example.json` | Example tasks.json structure |
-| `plan-prompt.md` | System prompt for the planner agent |
-| `build-prompt.md` | System prompt for the builder agent |
-| `qa-prompt.md` | System prompt for the QA evaluator agent |
+## Project state (gitignored)
 
-## State files (gitignored by default)
+After `ralph init`, your project gets a `ralph/` directory for cycle state:
 
 | File | Description |
 |------|-------------|
-| `ralph/tasks.json` | Structured backlog with build_pass / qa_pass flags |
+| `ralph/ralph-config.json` | Project configuration (commit this) |
 | `ralph/tasks.raw.md` | Free-form requirements input |
+| `ralph/tasks.json` | Structured backlog with build_pass / qa_pass flags |
 | `ralph/qa-report.json` | Per-task QA attempt history |
 | `ralph/qa-hints.json` | Builder hints for the QA evaluator |
-| `ralph/plan-progress.txt` | Planner iteration log |
-| `ralph/build-progress.txt` | Builder iteration log |
-| `.plan-complete` | Sentinel file — Phase 1 is done |
+| `.plan-complete` | Sentinel — Phase 1 is done |
 
 ## Reset
 
 ```bash
-./ralph/reset-ralph.sh                        # archive state, clear for new cycle
-./ralph/reset-ralph.sh path/to/new-raw.md     # reset + load new requirements
-./ralph/reset-ralph.sh --hard                 # clear without archiving
+ralph reset                        # archive state, clear for new cycle
+ralph reset path/to/new-raw.md     # reset and load new requirements
+ralph reset --hard                 # clear without archiving
 ```
 
 ## License

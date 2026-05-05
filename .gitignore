@@ -1,14 +1,2 @@
-# ralph runtime state (project-specific, not committed to this repo)
-ralph/tasks.json
-ralph/tasks.raw.md
-ralph/plan-progress.txt
-ralph/build-progress.txt
-ralph/qa-report.json
-ralph/qa-hints.json
-ralph/.archive/
-ralph/runtime-logs/
-ralph/qa-artifacts/
-.plan-complete
-.ralph-watchdog.lock
-ralph-watchdog-*.log
-ralph/ralph-config.json
+# ralph runtime state lives in your project, not here
+*.log

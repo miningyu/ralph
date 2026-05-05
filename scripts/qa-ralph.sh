@@ -1,15 +1,15 @@
 #!/bin/bash
-# Phase 3: QA — independent evaluator (Claude Sonnet) validates one task per iteration.
-# For frontend tasks, also starts a dev server to allow manual smoke testing.
+# Phase 3: QA — independent evaluator validates one task per iteration.
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source ralph/ralph-lib.sh
+
+[ -n "${RALPH_INSTALL:-}" ] || RALPH_INSTALL="$(dirname "$(dirname "$(readlink -f "$0")")")"
+source "${RALPH_INSTALL}/scripts/ralph-lib.sh"
 
 ITERATIONS="${1:-100}"
 
 [ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found."; exit 1; }
-[ -f ralph/tasks.json ] || { echo "Error: ralph/tasks.json not found."; exit 1; }
-command -v jq >/dev/null     || { echo "Error: jq is required."; exit 1; }
+[ -f ralph/tasks.json ]        || { echo "Error: ralph/tasks.json not found."; exit 1; }
+command -v jq >/dev/null    || { echo "Error: jq is required."; exit 1; }
 command -v claude >/dev/null || { echo "Error: claude CLI not found in PATH."; exit 1; }
 
 TARGET_NAME=$(jq -r '.projectName' ralph/ralph-config.json)
@@ -41,7 +41,6 @@ start_dev_if_needed() {
 }
 trap '[ -n "$DEV_PID" ] && kill $DEV_PID 2>/dev/null || true' EXIT
 
-# Get next task where qa_pass != true and attempt count < MAX_RETRIES
 get_next_task() {
   jq -rn --slurpfile t ralph/tasks.json --slurpfile r ralph/qa-report.json --argjson cap "$MAX_RETRIES" '
     ($t[0]) as $tasks
@@ -102,7 +101,7 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   fi
 
   result=$(timeout "$EVAL_TIMEOUT" $EVAL_CMD \
-"$(cat ralph/qa-prompt.md)
+"$(cat "${RALPH_INSTALL}/prompts/qa-prompt.md")
 
 == FEATURE TO TEST ==
 $MAIN_TASK

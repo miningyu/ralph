@@ -1,13 +1,13 @@
 #!/bin/bash
 # Phase 1: Plan — refine ralph/tasks.json from requirements
-# Each iteration = exactly 1 task added or refined (enforced by prompt and NEXT/PLAN_COMPLETE promises)
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source ralph/ralph-lib.sh
+
+[ -n "${RALPH_INSTALL:-}" ] || RALPH_INSTALL="$(dirname "$(dirname "$(readlink -f "$0")")")"
+source "${RALPH_INSTALL}/scripts/ralph-lib.sh"
 
 ITERATIONS="${1:-50}"
 
-[ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found."; exit 1; }
+[ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found. Run 'ralph init' first."; exit 1; }
 command -v jq >/dev/null || { echo "Error: jq is required."; exit 1; }
 command -v claude >/dev/null || { echo "Error: claude CLI not found in PATH."; exit 1; }
 
@@ -20,9 +20,8 @@ echo "Iterations: $ITERATIONS"
 echo "Builder: $BUILDER_CMD"
 echo ""
 
-# Initialize state
-[ -f ralph/tasks.json ]         || echo '[]' > ralph/tasks.json
-[ -f ralph/plan-progress.txt ]  || touch ralph/plan-progress.txt
+[ -f ralph/tasks.json ]        || echo '[]' > ralph/tasks.json
+[ -f ralph/plan-progress.txt ] || touch ralph/plan-progress.txt
 
 RAW_REF=""
 [ -f ralph/tasks.raw.md ] && RAW_REF="@ralph/tasks.raw.md"
@@ -36,7 +35,7 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   fi
 
   result=$(timeout "$ITER_TIMEOUT" $BUILDER_CMD \
-"@ralph/plan-prompt.md @ralph/ralph-config.json @ralph/tasks.json @ralph/plan-progress.txt $RAW_REF
+"@${RALPH_INSTALL}/prompts/plan-prompt.md @ralph/ralph-config.json @ralph/tasks.json @ralph/plan-progress.txt $RAW_REF
 
 ITERATION: $i of $ITERATIONS
 

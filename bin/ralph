@@ -1,0 +1,57 @@
+#!/bin/bash
+set -euo pipefail
+
+RALPH_INSTALL="$(dirname "$(dirname "$(readlink -f "$0")")")"
+export RALPH_INSTALL
+
+CMD="${1:-help}"
+shift 2>/dev/null || true
+
+_check_config() {
+  [ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found. Run 'ralph init' first."; exit 1; }
+}
+
+case "$CMD" in
+  init)
+    bash "${RALPH_INSTALL}/scripts/ralph-init.sh" "$@"
+    ;;
+  run)
+    _check_config
+    bash "${RALPH_INSTALL}/scripts/ralph-watchdog.sh" "$@"
+    ;;
+  plan)
+    _check_config
+    bash "${RALPH_INSTALL}/scripts/plan-ralph.sh" "$@"
+    ;;
+  build)
+    _check_config
+    bash "${RALPH_INSTALL}/scripts/build-ralph.sh" "$@"
+    ;;
+  qa)
+    _check_config
+    bash "${RALPH_INSTALL}/scripts/qa-ralph.sh" "$@"
+    ;;
+  reset)
+    _check_config
+    bash "${RALPH_INSTALL}/scripts/reset-ralph.sh" "$@"
+    ;;
+  version|--version|-v)
+    echo "ralph $(cat "${RALPH_INSTALL}/VERSION" 2>/dev/null || echo "dev")"
+    ;;
+  help|--help|-h|*)
+    echo "ralph — autonomous Claude Code build loop"
+    echo ""
+    echo "Usage: ralph <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  init     scaffold ralph-config.json in current project"
+    echo "  run      run full plan → build → QA cycle"
+    echo "  plan     phase 1: plan tasks only"
+    echo "  build    phase 2: implement tasks only"
+    echo "  qa       phase 3: validate tasks only"
+    echo "  reset    archive current cycle and start fresh"
+    echo "  version  show ralph version"
+    echo ""
+    echo "Run from your project root. Requires ralph/ralph-config.json (run 'ralph init')."
+    ;;
+esac

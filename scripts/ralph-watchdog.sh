@@ -7,15 +7,18 @@
 #   3. qa-ralph.sh — validates tasks until all are qa_pass:true (or retries exhausted)
 #   If QA finds regressions, falls back to phase 2.
 #
-# Usage: ./ralph/ralph-watchdog.sh
+# Usage: ralph run   (from project root)
 set -euo pipefail
+
+[ -n "${RALPH_INSTALL:-}" ] || RALPH_INSTALL="$(dirname "$(dirname "$(readlink -f "$0")")")"
+
 # cron doesn't load login shell profile — source common profile files to pick up PATH
 for _profile in "$HOME/.zprofile" "$HOME/.bash_profile" "$HOME/.profile"; do
   [ -f "$_profile" ] && source "$_profile" && break
 done
 unset _profile
-cd "$(dirname "$0")/.."
-source ralph/ralph-lib.sh
+
+source "${RALPH_INSTALL}/scripts/ralph-lib.sh"
 
 LOCKFILE=".ralph-watchdog.lock"
 LOG_FILE="ralph-watchdog-$(date +%Y%m%d-%H%M%S).log"
@@ -33,7 +36,7 @@ fi
 echo $$ > "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
-[ -f ralph/ralph-config.json ] || { log "Error: ralph/ralph-config.json not found."; exit 1; }
+[ -f ralph/ralph-config.json ] || { log "Error: ralph/ralph-config.json not found. Run 'ralph init' first."; exit 1; }
 command -v jq >/dev/null || { log "Error: jq is required."; exit 1; }
 TARGET_NAME=$(jq -r '.projectName' ralph/ralph-config.json)
 
@@ -67,7 +70,7 @@ while ! plan_done; do
     exit 1
   fi
   log "Phase 1: running plan loop... (attempt $((plan_restarts + 1)))"
-  ./ralph/plan-ralph.sh || true
+  "${RALPH_INSTALL}/scripts/plan-ralph.sh" || true
   cron_backup
   if plan_done; then
     log "Phase 1: complete. $(total_tasks) task(s) queued."
@@ -93,7 +96,7 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
       break
     fi
     log "Phase 2: building... $(count_passes)/$(total_tasks) (attempt $((build_restarts + 1)))"
-    rc=0; ./ralph/build-ralph.sh || rc=$?
+    rc=0; "${RALPH_INSTALL}/scripts/build-ralph.sh" || rc=$?
     cron_backup
     if all_built; then
       log "Phase 2: all $(total_tasks) tasks build_pass."
@@ -115,7 +118,7 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
   while ! all_qa_passed && [ "$qa_restarts" -lt "$MAX_QA_RESTARTS" ]; do
     qa_restarts=$((qa_restarts + 1))
     log "Phase 3: running QA... $(qa_passed)/$(total_tasks) qa_pass (attempt $qa_restarts/$MAX_QA_RESTARTS)"
-    ./ralph/qa-ralph.sh || true
+    "${RALPH_INSTALL}/scripts/qa-ralph.sh" || true
     cron_backup
     if all_qa_passed; then
       log "Phase 3: all tasks qa_pass."

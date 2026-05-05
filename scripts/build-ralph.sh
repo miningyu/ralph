@@ -1,15 +1,15 @@
 #!/bin/bash
 # Phase 2: Build — implement one item from ralph/tasks.json per iteration
-# Enforced by prompt and NEXT/COMPLETE/BLOCKED promises
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source ralph/ralph-lib.sh
+
+[ -n "${RALPH_INSTALL:-}" ] || RALPH_INSTALL="$(dirname "$(dirname "$(readlink -f "$0")")")"
+source "${RALPH_INSTALL}/scripts/ralph-lib.sh"
 
 ITERATIONS="${1:-100}"
 
 [ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found."; exit 1; }
-[ -f ralph/tasks.json ] || { echo "Error: ralph/tasks.json not found. Run plan-ralph.sh first."; exit 1; }
-command -v jq >/dev/null || { echo "Error: jq is required."; exit 1; }
+[ -f ralph/tasks.json ]        || { echo "Error: ralph/tasks.json not found. Run 'ralph plan' first."; exit 1; }
+command -v jq >/dev/null    || { echo "Error: jq is required."; exit 1; }
 command -v claude >/dev/null || { echo "Error: claude CLI not found in PATH."; exit 1; }
 
 TARGET_NAME=$(jq -r '.projectName' ralph/ralph-config.json)
@@ -26,7 +26,6 @@ touch ralph/build-progress.txt
 [ -f ralph/qa-report.json ] || echo '[]' > ralph/qa-report.json
 [ -f ralph/qa-hints.json ]  || echo '[]' > ralph/qa-hints.json
 
-# ── Backend auto-restart ──────────────────────────────────────────────────────
 BACKEND_LOG_DIR="ralph/runtime-logs"
 
 _backend_responsive() {
@@ -37,11 +36,9 @@ _backend_responsive() {
 }
 
 ensure_backend_healthy() {
-  # Skip if backend.port or backend.devCommand is not configured
   [ -z "$BACKEND_PORT" ] && return 0
   [ -z "$BACKEND_DEV_CMD" ] && return 0
 
-  # Skip if the next target task's scope is not in backend.scopes
   local scope
   scope=$(jq -r '[.[] | select(.build_pass==false)] | first | .scope // ""' ralph/tasks.json 2>/dev/null || echo "")
   local needs_backend
@@ -53,7 +50,7 @@ ensure_backend_healthy() {
 
   if [ -n "$pid" ]; then
     if _backend_responsive; then
-      return 0  # healthy
+      return 0
     fi
     echo "[backend-health] Port ${BACKEND_PORT} is LISTEN but HTTP unresponsive (PID $pid) — auto-restarting"
     kill -9 "$pid" 2>/dev/null || true
@@ -84,9 +81,7 @@ ensure_backend_healthy() {
   tail -20 "$log" 2>/dev/null || true
   return 1
 }
-# ────────────────────────────────────────────────────────────────────────────
 
-# Build a "QA failure context" block if the next target task has previous failed attempts
 get_qa_context() {
   jq -rn --slurpfile tasks ralph/tasks.json --slurpfile report ralph/qa-report.json '
     ($tasks[0]) as $prd
@@ -141,20 +136,19 @@ $QA_CONTEXT
 
 REBUILD instructions:
 1. Read the QA failure context above — understand exactly what broke and how.
-2. Trace the root cause — read all related source files, not just where the bug surfaced. The real bug is usually in packages/* utilities or shared types.
+2. Trace the root cause — read all related source files, not just where the bug surfaced.
 3. Check dependent tasks — bugs in dependencies have cascading effects.
 4. Check downstream tasks — make sure the fix does not break them.
-5. If the bug stems from a structural issue, consider refactoring. A targeted refactor that catches the root cause is better than a narrow patch that fails QA again.
-6. Fix the root cause, not the symptom.
-7. Update tests to explicitly cover the failure scenarios from the QA report.
-8. Run lint + typecheck + test with turbo --filter for the task scope — all must exit 0.
-9. Set build_pass:true, commit, push."
+5. Fix the root cause, not the symptom.
+6. Update tests to explicitly cover the failure scenarios from the QA report.
+7. Run lint + typecheck + test with turbo --filter for the task scope — all must exit 0.
+8. Set build_pass:true, commit, push."
   else
     MODE_SECTION="Build exactly ONE task (the first build_pass:false item). Then commit, push, and stop."
   fi
 
   result=$(timeout "$ITER_TIMEOUT" $BUILDER_CMD \
-"@ralph/build-prompt.md @ralph/ralph-config.json @ralph/tasks.json @ralph/build-progress.txt @ralph/qa-report.json @ralph/qa-hints.json
+"@${RALPH_INSTALL}/prompts/build-prompt.md @ralph/ralph-config.json @ralph/tasks.json @ralph/build-progress.txt @ralph/qa-report.json @ralph/qa-hints.json
 
 ITERATION: $i of $ITERATIONS
 PROGRESS: $PASSES/$TOTAL tasks build_pass
