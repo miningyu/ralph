@@ -98,7 +98,7 @@ QA에서 회귀가 발견되면 `build_pass`가 초기화되고, 모든 task가 
 | `ralph/tasks.json` | task 백로그 (build_pass / qa_pass 포함) |
 | `ralph/qa-report.json` | task별 QA 시도 이력 |
 | `ralph/qa-hints.json` | Builder가 Evaluator에게 남기는 힌트 |
-| `.plan-complete` | Phase 1 완료 sentinel |
+| `ralph/.plan-complete` | Phase 1 완료 sentinel |
 
 ## 초기화
 
