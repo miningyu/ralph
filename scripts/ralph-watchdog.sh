@@ -2,7 +2,7 @@
 # ralph-watchdog.sh — top-level orchestrator. Runs plan -> build -> QA with restart logic.
 #
 # Phases:
-#   1. plan-ralph.sh — refines ralph/tasks.json until .plan-complete is created
+#   1. plan-ralph.sh — refines ralph/tasks.json until ralph/.plan-complete is created
 #   2. build-ralph.sh — implements tasks until all are build_pass:true
 #   3. qa-ralph.sh — validates tasks until all are qa_pass:true (or retries exhausted)
 #   If QA finds regressions, falls back to phase 2.
@@ -48,11 +48,11 @@ all_qa_passed() {
   local total=$(total_tasks); local passed=$(qa_passed)
   [ "$total" -gt 0 ] && [ "$passed" -ge "$total" ]
 }
-plan_done() { [ -f .plan-complete ]; }
+plan_done() { [ -f ralph/.plan-complete ]; }
 
 cron_backup() {
-  git status --porcelain ralph/ .plan-complete 2>/dev/null | grep -q . || return 0
-  git add ralph/ .plan-complete 2>/dev/null || true
+  git status --porcelain ralph/ 2>/dev/null | grep -q . || return 0
+  git add ralph/ 2>/dev/null || true
   git commit -m "watchdog backup $(date '+%H:%M') — build $(count_passes)/$(total_tasks), qa $(qa_passed)/$(total_tasks)" 2>/dev/null || true
   git push 2>/dev/null || true
 }

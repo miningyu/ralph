@@ -35,7 +35,7 @@ ralph/qa-hints.json
 ralph/.archive/
 ralph/runtime-logs/
 ralph/qa-artifacts/
-.plan-complete
+ralph/.plan-complete
 .ralph-watchdog.lock
 ralph-watchdog-*.log
 IGNORE

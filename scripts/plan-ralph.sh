@@ -29,8 +29,8 @@ RAW_REF=""
 for ((i=1; i<=$ITERATIONS; i++)); do
   echo "--- Plan iteration $i/$ITERATIONS ---"
 
-  if [ -f .plan-complete ]; then
-    echo "Plan is already complete (.plan-complete exists). Exiting."
+  if [ -f ralph/.plan-complete ]; then
+    echo "Plan is already complete (ralph/.plan-complete exists). Exiting."
     exit 0
   fi
 
@@ -46,7 +46,7 @@ Output <promise>PLAN_COMPLETE</promise> only when the backlog is ready to move t
   echo "$result"
 
   if [[ "$result" == *"<promise>PLAN_COMPLETE</promise>"* ]]; then
-    touch .plan-complete
+    touch ralph/.plan-complete
     echo ""
     echo "=== Plan complete after $i iteration(s) ==="
     exit 0

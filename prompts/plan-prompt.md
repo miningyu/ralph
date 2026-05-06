@@ -32,7 +32,7 @@ Choose exactly **one** of the following modes (in priority order):
   Add exactly one new task. Exit.
 
 - **MODE D — Plan complete:** All tasks have a verified scope, ≥1 acceptance criterion, resolved dependencies, and `tasks.raw.md` is fully covered (or absent).
-  Touch `.plan-complete` and emit `<promise>PLAN_COMPLETE</promise>`.
+  Touch `ralph/.plan-complete` and emit `<promise>PLAN_COMPLETE</promise>`.
 
 ## After modifying `tasks.json`
 1. Source code linting is **not needed** here (no source changes).
@@ -43,5 +43,5 @@ Choose exactly **one** of the following modes (in priority order):
    - `<promise>PLAN_COMPLETE</promise>` — backlog is ready for the build phase.
 
 ## Output discipline
-- Do **not** start writing code. This phase only edits `ralph/tasks.json`, `ralph/plan-progress.txt`, and (on completion) `.plan-complete`.
+- Do **not** start writing code. This phase only edits `ralph/tasks.json`, `ralph/plan-progress.txt`, and (on completion) `ralph/.plan-complete`.
 - If only one item changes, do **not** rewrite the entire `tasks.json` — preserve all sibling items byte-for-byte.

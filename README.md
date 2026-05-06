@@ -97,8 +97,8 @@ After `ralph init`, your project gets a `ralph/` directory:
 | `ralph/tasks.raw.md` | Free-form requirements input |
 | `ralph/tasks.json` | Task backlog with `build_pass` / `qa_pass` flags |
 | `ralph/qa-report.json` | Per-task QA attempt history |
-| `ralph/qa-hints.json` | Builder hints for the evaluator |
-| `.plan-complete` | Sentinel — Phase 1 is done |
+| `ralph/qa-hints.json` | Builder hints for the QA evaluator |
+| `ralph/.plan-complete` | Sentinel — Phase 1 is done |
 
 ## Reset
 

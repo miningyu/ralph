@@ -41,7 +41,7 @@ if [ "$FORCE" -ne 1 ] && command -v git >/dev/null && git rev-parse --is-inside-
   DIRTY=$(git status --porcelain -- ralph/tasks.json ralph/tasks.raw.md \
                                      ralph/plan-progress.txt ralph/build-progress.txt \
                                      ralph/qa-report.json ralph/qa-hints.json \
-                                     .plan-complete 2>/dev/null || true)
+                                     ralph/.plan-complete 2>/dev/null || true)
   if [ -n "$DIRTY" ]; then
     echo "Error: uncommitted changes found in ralph state files."
     echo "$DIRTY"
@@ -73,6 +73,8 @@ if [ "$HARD" -ne 1 ]; then
       esac
     fi
   done
+  [ -f ralph/.plan-complete ] && need_archive=1
+  # Backward compat: legacy .plan-complete at cwd from pre-fix versions
   [ -f .plan-complete ] && need_archive=1
 fi
 
@@ -83,7 +85,9 @@ if [ "$need_archive" -eq 1 ]; then
   for f in "${STATE_FILES[@]}"; do
     [ -e "$f" ] && mv "$f" "$ARCHIVE_DIR/$(basename "$f")"
   done
-  [ -f .plan-complete ] && mv .plan-complete "$ARCHIVE_DIR/.plan-complete"
+  [ -f ralph/.plan-complete ] && mv ralph/.plan-complete "$ARCHIVE_DIR/.plan-complete"
+  # Backward compat: also archive legacy cwd location if present
+  [ -f .plan-complete ] && mv .plan-complete "$ARCHIVE_DIR/.plan-complete.legacy"
   echo "Previous cycle archived: $ARCHIVE_DIR"
 elif [ "$HARD" -eq 1 ]; then
   echo "--hard: skipping archive."
@@ -96,6 +100,8 @@ echo '[]' > ralph/qa-report.json
 echo '[]' > ralph/qa-hints.json
 : > ralph/plan-progress.txt
 : > ralph/build-progress.txt
+rm -f ralph/.plan-complete
+# Backward compat: clean up legacy cwd location too
 rm -f .plan-complete
 
 if [ -n "$RAW_SRC" ]; then
