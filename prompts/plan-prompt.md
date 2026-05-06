@@ -23,7 +23,26 @@ Each invocation refines exactly **one** unit from the backlog and exits.
 Choose exactly **one** of the following modes (in priority order):
 
 - **MODE A — Bootstrap:** `tasks.json` is empty or `[]`.
-  Read `tasks.raw.md` (if present) and the repository. Emit an initial `tasks.json` with **3–7 tasks** covering the most concrete requirements. Exit.
+  Read `tasks.raw.md` (if present) and the repository. **Your job is to expand
+  the user's request into every atomic task the work actually requires** —
+  do not just echo the user's wording back. The user's prompt may be terse
+  ("add e2e for chat module") or verbose; either way, decompose it based on
+  what the codebase reveals about true scope.
+
+  Emit as many tasks as the work demands — **there is no upper bound**.
+  Calibration ranges (use as guidance, not as caps):
+
+  | Scope of work | Typical task count |
+  |---|---|
+  | Trivial change (rename, single field) | 1–2 |
+  | Single-route feature or bug fix | 3–7 |
+  | Domain-wide test/refactor (e.g., e2e for one module) | 10–30 |
+  | Cross-cutting refactor or migration | 30+ |
+
+  When in doubt, prefer **more smaller tasks over fewer larger ones**. Catching
+  oversized tasks later via MODE B refinement is expensive and tends to bundle
+  unrelated work; over-decomposition only costs extra QA iterations, which are
+  cheap. Exit after writing the initial backlog.
 
 - **MODE B — Refine one task:** At least one task has a `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, or an unverified `scope`.
   Pick the first such task. Read the relevant code under its `path`. Tighten the fields. Exit.
