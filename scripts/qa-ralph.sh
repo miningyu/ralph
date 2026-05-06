@@ -10,7 +10,6 @@ ITERATIONS="${1:-100}"
 [ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found."; exit 1; }
 [ -f ralph/tasks.json ]        || { echo "Error: ralph/tasks.json not found."; exit 1; }
 command -v jq >/dev/null    || { echo "Error: jq is required."; exit 1; }
-command -v claude >/dev/null || { echo "Error: claude CLI not found in PATH."; exit 1; }
 
 TARGET_NAME=$(jq -r '.projectName' ralph/ralph-config.json)
 EVAL_CMD=$(jq -r '.evaluator.command' ralph/ralph-config.json)
@@ -18,6 +17,7 @@ EVAL_TIMEOUT=$(jq -r '.evaluator.iterationTimeoutSeconds // 1800' ralph/ralph-co
 MAX_RETRIES=$(jq -r '.evaluator.maxRetries' ralph/ralph-config.json)
 DEV_CMD=$(jq -r '.runtime.frontend.devCommand // empty' ralph/ralph-config.json)
 PREVIEW_URL=$(jq -r '.runtime.frontend.previewUrl // empty' ralph/ralph-config.json)
+require_agent_command "$EVAL_CMD" "evaluator.command"
 
 [ -f ralph/qa-report.json ] || echo '[]' > ralph/qa-report.json
 [ -f ralph/qa-hints.json ]  || echo '[]' > ralph/qa-hints.json

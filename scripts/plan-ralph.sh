@@ -9,11 +9,11 @@ ITERATIONS="${1:-50}"
 
 [ -f ralph/ralph-config.json ] || { echo "Error: ralph/ralph-config.json not found. Run 'ralph init' first."; exit 1; }
 command -v jq >/dev/null || { echo "Error: jq is required."; exit 1; }
-command -v claude >/dev/null || { echo "Error: claude CLI not found in PATH."; exit 1; }
 
 TARGET_NAME=$(jq -r '.projectName' ralph/ralph-config.json)
 BUILDER_CMD=$(jq -r '.builder.command' ralph/ralph-config.json)
 ITER_TIMEOUT=$(jq -r '.builder.iterationTimeoutSeconds' ralph/ralph-config.json)
+require_agent_command "$BUILDER_CMD" "builder.command"
 
 echo "=== ${TARGET_NAME} ralph: Phase 1 (Plan) ==="
 echo "Iterations: $ITERATIONS"
