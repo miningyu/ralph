@@ -22,7 +22,7 @@
     "affected":  "pnpm exec turbo run lint test build --filter='...[HEAD^1]'"
   },
   "evaluator": {
-    "command": "claude -p --dangerously-skip-permissions --model claude-sonnet-4-6",
+    "command": "codex exec --dangerously-bypass-approvals-and-sandbox",
     "maxRetries": 5,
     "iterationTimeoutSeconds": 1800
   },

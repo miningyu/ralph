@@ -17,15 +17,24 @@ ralph run
                └─ on failure → full failure context injected into next build iteration
 ```
 
-> **Builder** (Opus) implements. **Evaluator** (Sonnet) validates independently.
+> **Builder** (Claude) implements. **Evaluator** (Codex) validates independently.
+> Each phase's CLI is configurable — by default plan/build run on `claude` and QA runs on `codex`,
+> so the builder and evaluator come from different model families. Swap in any CLI that accepts a
+> prompt as a positional argument (e.g. `claude` on both, or `codex` on both) by editing
+> `builder.command` / `evaluator.command` in `ralph/ralph-config.json`.
 > QA failures are fed back as root-cause context so the builder fixes the actual problem, not symptoms.
 
 ---
 
 ## Requirements
 
-- [Claude Code CLI](https://claude.ai/code) (`claude`)
+- [Claude Code CLI](https://claude.ai/code) (`claude`) — used by Phase 1 (plan) and Phase 2 (build) by default
+- [OpenAI Codex CLI](https://github.com/openai/codex) (`codex`) — used by Phase 3 (QA) by default; run `codex login` once before first use
 - `bash`, `jq`, `curl`, `git`
+
+> Only the CLIs you actually configure in `ralph/ralph-config.json` need to be installed. If you
+> point both `builder.command` and `evaluator.command` at `claude` (or both at `codex`), only that
+> one CLI is required.
 
 ## Install
 
@@ -79,8 +88,8 @@ If QA finds a regression, `build_pass` is reset and the cycle repeats until all 
 | `workspaces.apps[]` | Apps — name, path, kind (backend/frontend), test flags |
 | `workspaces.packages[]` | Shared library entries |
 | `commands.*` | build/lint/test/typecheck commands (`{scope}` substituted at runtime) |
-| `builder.command` | Claude command for build agent (Opus recommended) |
-| `evaluator.command` | Claude command for QA agent (Sonnet recommended) |
+| `builder.command` | Agent CLI for plan + build (default: `claude` with Opus) |
+| `evaluator.command` | Agent CLI for QA (default: `codex exec`) — keep this distinct from `builder.command` so QA validates from a fresh perspective |
 | `runtime.backend` | Port, health path, dev command for backend auto-restart |
 | `runtime.frontend` | Dev command, preview URL for browser-based QA |
 | `guardrails[]` | Rules injected into every agent prompt |

@@ -17,15 +17,23 @@ ralph run
                └─ 실패 시 → 실패 원인 전체를 다음 build iteration에 주입
 ```
 
-> **Builder**(Opus)가 구현하고, **Evaluator**(Sonnet)가 독립적으로 검증한다.
+> **Builder**(Claude)가 구현하고, **Evaluator**(Codex)가 독립적으로 검증한다.
+> 각 phase의 CLI는 설정으로 교체 가능 — 기본값은 plan/build가 `claude`, QA가 `codex`로
+> 빌더와 평가자를 서로 다른 모델 계열에서 운용한다. 프롬프트를 positional 인자로 받는
+> CLI라면 무엇이든 사용 가능하므로(`claude` 둘 다, `codex` 둘 다도 OK),
+> `ralph/ralph-config.json`의 `builder.command` / `evaluator.command`만 바꾸면 된다.
 > QA 실패 시 단순 증상 수정이 아닌 근본 원인을 context로 주입해 재구현한다.
 
 ---
 
 ## Requirements
 
-- [Claude Code CLI](https://claude.ai/code) (`claude`)
+- [Claude Code CLI](https://claude.ai/code) (`claude`) — 기본값에서 Phase 1(plan), Phase 2(build) 담당
+- [OpenAI Codex CLI](https://github.com/openai/codex) (`codex`) — 기본값에서 Phase 3(QA) 담당. 최초 1회 `codex login` 실행 필요
 - `bash`, `jq`, `curl`, `git`
+
+> `ralph/ralph-config.json`에 실제로 설정한 CLI만 설치되어 있으면 된다. 두 명령어를 모두
+> `claude` (또는 모두 `codex`) 로 두면 한 쪽 CLI만 있으면 충분하다.
 
 ## 설치
 
@@ -79,8 +87,8 @@ QA에서 회귀가 발견되면 `build_pass`가 초기화되고, 모든 task가 
 | `workspaces.apps[]` | 앱 목록 (name, path, kind, 테스트 여부) |
 | `workspaces.packages[]` | 공유 라이브러리 목록 |
 | `commands.*` | build/lint/test/typecheck 명령어 (`{scope}` 치환) |
-| `builder.command` | Build 에이전트 Claude 명령어 (Opus 권장) |
-| `evaluator.command` | QA 에이전트 Claude 명령어 (Sonnet 권장) |
+| `builder.command` | plan + build 에이전트 CLI (기본: `claude` Opus) |
+| `evaluator.command` | QA 에이전트 CLI (기본: `codex exec`). builder와 다른 CLI를 권장 — 새 시각으로 검증하기 위함 |
 | `runtime.backend` | 백엔드 포트, 헬스체크 경로, dev 명령어 |
 | `runtime.frontend` | 프론트엔드 dev 명령어, preview URL |
 | `guardrails[]` | 모든 에이전트 프롬프트에 주입되는 제약 규칙 |

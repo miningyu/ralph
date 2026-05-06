@@ -39,7 +39,7 @@ case "$CMD" in
     echo "ralph $(cat "${RALPH_INSTALL}/VERSION" 2>/dev/null || echo "dev")"
     ;;
   help|--help|-h|*)
-    echo "ralph — autonomous Claude Code build loop"
+    echo "ralph — autonomous plan/build/QA loop (claude + codex by default)"
     echo ""
     echo "Usage: ralph <command> [options]"
     echo ""
