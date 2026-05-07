@@ -48,6 +48,9 @@ all_qa_passed() {
   local total=$(total_tasks); local passed=$(qa_passed)
   [ "$total" -gt 0 ] && [ "$passed" -ge "$total" ]
 }
+any_qa_blocked() {
+  [ "$(qa_blocked)" -gt 0 ]
+}
 plan_done() { [ -f ralph/.plan-complete ]; }
 
 reset_pass_flags() {
@@ -151,7 +154,13 @@ run_final_runtime_smoke() {
 }
 
 cron_backup() {
-  git status --porcelain ralph/ 2>/dev/null | grep -q . || return 0
+  local status meaningful
+  status=$(git status --porcelain ralph/ 2>/dev/null || true)
+  [ -n "$status" ] || return 0
+
+  meaningful=$(printf '%s\n' "$status" | awk '{print $2}' | grep -Ev '^ralph/(qa-report\.json|\.current-task-[0-9]+\.json)$' || true)
+  [ -n "$meaningful" ] || return 0
+
   git add ralph/ 2>/dev/null || true
   git commit -m "watchdog backup $(date '+%H:%M') — build $(count_passes)/$(total_tasks), qa $(qa_passed)/$(total_tasks)" 2>/dev/null || true
   git push 2>/dev/null || true
@@ -232,6 +241,10 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
     log "Phase 3: running QA... $(qa_passed)/$(total_tasks) qa_pass (attempt $qa_restarts/$MAX_QA_RESTARTS)"
     "${RALPH_INSTALL}/scripts/qa-ralph.sh" || true
     cron_backup
+    if any_qa_blocked; then
+      log "Phase 3: QA blocked for $(qa_blocked) task(s). Human intervention required; stopping loop."
+      exit 3
+    fi
     if all_qa_passed; then
       log "Phase 3: all tasks qa_pass."
       break

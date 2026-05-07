@@ -26,6 +26,7 @@ You can also read from disk: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-
 6. **Backend tasks (`kind: "backend"`):** run e2e tests if they exist; otherwise inspect the controller/service code paths and reason through each acceptance criterion. If the dev server is running, hit the API directly with curl.
 7. **Library tasks (`kind: "library"`):** focus on the public API surface and how every consumer in `touches[]` uses it. Run the consumer test suites as well.
 8. **Cross-task regression check:** if `commands.affected` is set in `ralph-config.json`, run `{affected}` to surface side effects in components the builder did not list in `touches[]`. Skip this step if `commands.affected` is not set.
+   - Do not use a QA/report-only commit as the baseline for affected checks. If the configured command compares against `HEAD^1` and `HEAD` is a Ralph QA/report/backup commit, report that the affected baseline is unsafe and use the configured stable base ref if available.
 
 ## How to record results
 Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entries):
@@ -33,6 +34,7 @@ Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entr
 {
   "task_id": "<id>",
   "attempt": <next attempt number>,
+  "task_spec_key": "<TASK_SPEC_KEY from the runtime prompt>",
   "status": "pass" | "fail" | "partial",
   "tested_steps": ["acceptance criterion 1: how I tested it", "..."],
   "bugs_found": [
@@ -44,18 +46,20 @@ Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entr
 
 ## Decision rules
 - **All acceptance criteria verified, no regressions, all commands green** → `status:"pass"`, set `qa_pass:true` in `tasks.json`.
+- **A command has a documented repository baseline failure** → do not mark the task failed for unrelated pre-existing diagnostics. Record the baseline, check changed/relevant files, and pass only if the task introduced no new diagnostics or regressions.
 - **Bug found and fixed directly** → re-run all commands; set `status:"pass"` only if they are all green. Otherwise `status:"fail"`.
 - **Bug that can only be fixed outside `touches[]`** → `status:"fail"`, leave `qa_pass:false`, describe the boundary hit in `fix_description`.
-- **Validation command times out or crashes** → `status:"partial"`, leave `qa_pass:false`.
+- **Validation command times out or crashes because local infrastructure is missing** (browser agent unavailable, required dev server unavailable, credentials missing, service dependency not running) → `status:"partial"`, leave `qa_pass:false`, set `qa_status:"infra_blocked"` on the task, and describe the prerequisite.
+- **Repeated failure with no safe in-scope fix** → leave `qa_pass:false`; if the retry limit has been reached or the acceptance criteria conflict with later tasks/current HEAD, set `qa_status:"blocked"` with `qa_blocked_reason`.
 
 ## Hard rules
 1. Same scope rules as the builder — only modify files within the task's `path` and `touches[]` workspaces.
-2. **Never set `qa_pass:true` if any validation command exited non-zero.** Re-run after fixing; if still failing, mark `fail`.
+2. **Never set `qa_pass:true` for task-caused validation failures.** Re-run after fixing; if still failing because of this task, mark `fail`. If a non-zero command is an unrelated documented baseline failure, record the baseline comparison and changed-file check.
 3. Follow `ralph-config.json.guardrails`.
 4. Do not delete or rewrite previous entries in `qa-report.json`. Append-only.
 
 ## After recording
-1. Stage `ralph/` and the paths corresponding to the task's `path` and `touches[]` (only if files were actually changed).
-2. `git commit -m "qa: <task_id> attempt <n> — <pass|fail|partial>"`
-3. `git push`
-4. Emit `<promise>NEXT</promise>` regardless of status — the watchdog reads `qa_pass` and the retry counter to decide what to do next.
+1. Stage `ralph/` and the paths corresponding to the task's `path` and `touches[]` only for pass results, direct code fixes, or `qa_status` transitions such as `blocked`/`infra_blocked`.
+2. For fail-only or partial-only reports that do not change code or task status, do **not** commit. Leave the appended report on disk for the next build/QA iteration.
+3. If committing, use `git commit -m "qa: <task_id> attempt <n> — <pass|blocked|infra-blocked|fixed>"`, then `git push`.
+4. Emit `<promise>NEXT</promise>` regardless of status — the watchdog reads `qa_pass`, `qa_status`, and the retry counter to decide what to do next.

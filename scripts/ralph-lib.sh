@@ -13,6 +13,7 @@ fi
 # tasks.json helpers — assumes CWD is project root
 count_passes() { jq '[.[] | select(.build_pass == true)] | length' ralph/tasks.json 2>/dev/null || echo "0"; }
 qa_passed()    { jq '[.[] | select(.qa_pass == true)]    | length' ralph/tasks.json 2>/dev/null || echo "0"; }
+qa_blocked()   { jq '[.[] | select((.qa_status // "") as $s | $s == "blocked" or $s == "infra_blocked")] | length' ralph/tasks.json 2>/dev/null || echo "0"; }
 total_tasks()  { jq 'length' ralph/tasks.json 2>/dev/null || echo "0"; }
 
 require_agent_command() {

@@ -76,9 +76,9 @@ ralph reset   # archive current cycle, start fresh
 
 After all build tasks pass, the watchdog runs `commands.final` once per touched scope when configured. If `validation.runtimeSmoke` is `"final"`, backend/frontend runtime smoke also runs once at this final gate instead of during every build iteration.
 
-**Phase 3 — QA**: An independent Evaluator agent (not the builder) validates each task against its acceptance criteria. On failure, it writes a detailed bug report to `qa-report.json`. The next build iteration receives the full failure context to fix the root cause.
+**Phase 3 — QA**: An independent Evaluator agent (not the builder) validates each task against its acceptance criteria. On failure, it writes a detailed bug report to `qa-report.json`. The next build iteration receives the full failure context to fix the root cause. If the same task reaches `evaluator.maxRetries`, Ralph marks it with `qa_status:"blocked"` and stops the watchdog. Missing local prerequisites such as a browser agent, dev server, or credentials are classified as `qa_status:"infra_blocked"`.
 
-If QA finds a regression, `build_pass` is reset and the cycle repeats until all tasks reach both `build_pass:true` and `qa_pass:true`.
+If QA finds a regression, the failure report is fed back into the next build context and the cycle repeats until all tasks reach both `build_pass:true` and `qa_pass:true`. Fail-only reports are not committed repeatedly; only meaningful transitions such as pass, fix, blocked, or infra-blocked are committed.
 
 ## Configuration
 
@@ -92,9 +92,11 @@ If QA finds a regression, `build_pass` is reset and the cycle repeats until all 
 | `commands.*` | build/lint/test/typecheck commands (`{scope}` substituted at runtime) |
 | `commands.quick` | Optional fast build-iteration validation command |
 | `commands.final` | Optional final validation command run once per touched scope before QA |
+| `commands.affected` | Optional cross-task regression command. Prefer a stable base ref such as `${RALPH_BASE_REF:-origin/main}` instead of `HEAD^1` |
 | `builder.command` | Agent CLI for plan + build (default: `claude` with Opus) |
 | `builder.batchSize` | Maximum number of ready same-scope tasks to build in one agent invocation |
 | `evaluator.command` | Agent CLI for QA (default: `codex exec`) — keep this distinct from `builder.command` so QA validates from a fresh perspective |
+| `evaluator.maxRetries` | Per-task QA retry cap. When exhausted, the task becomes `qa_status:"blocked"` and the loop stops |
 | `validation.runtimeSmoke` | `"perTask"` for legacy build-time smoke, or `"final"` to run runtime smoke once before QA |
 | `runtime.backend` | Port, health path, dev command for backend auto-restart |
 | `runtime.frontend` | Dev command, preview URL for browser-based QA |
@@ -114,6 +116,10 @@ After `ralph init`, your project gets a `ralph/` directory:
 | `ralph/qa-report.json` | Per-task QA attempt history |
 | `ralph/qa-hints.json` | Builder hints for the QA evaluator |
 | `ralph/.plan-complete` | Sentinel — Phase 1 is done |
+
+`qa_status` in `tasks.json` is optional. Missing means the task is still pending QA. `blocked` means Ralph needs human input because retries were exhausted or acceptance criteria conflict with the current codebase. `infra_blocked` means QA could not run because a local prerequisite such as a browser agent, service, or credential is unavailable.
+
+If an existing project uses `HEAD^1` in `ralph-config.json.commands.affected`, change it to a stable base ref or set `RALPH_BASE_REF`. QA/report commits can otherwise become the comparison baseline and make affected checks validate Ralph state changes instead of implementation changes.
 
 ## Reset
 

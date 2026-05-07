@@ -75,9 +75,9 @@ ralph reset   # 현재 사이클 archive 후 초기화
 
 모든 build task가 통과하면 watchdog이 QA 전에 `commands.final`을 scope별로 한 번 실행한다. `validation.runtimeSmoke`가 `"final"`이면 백엔드/프론트엔드 런타임 스모크도 매 build iteration이 아니라 이 final gate에서 한 번 실행한다.
 
-**Phase 3 — QA**: Builder와 독립된 Evaluator가 각 task의 수락 기준을 검증한다. 버그 발견 시 `qa-report.json`에 상세 리포트를 기록하고, 다음 build iteration에 실패 원인 전체를 context로 주입한다.
+**Phase 3 — QA**: Builder와 독립된 Evaluator가 각 task의 수락 기준을 검증한다. 버그 발견 시 `qa-report.json`에 상세 리포트를 기록하고, 다음 build iteration에 실패 원인 전체를 context로 주입한다. 같은 task가 `evaluator.maxRetries`에 도달하면 `qa_status:"blocked"`로 전환하고 watchdog은 멈춘다. 브라우저 에이전트, dev server, credentials처럼 로컬 인프라가 없어 검증할 수 없는 경우는 `qa_status:"infra_blocked"`로 분류한다.
 
-QA에서 회귀가 발견되면 `build_pass`가 초기화되고, 모든 task가 `build_pass:true`와 `qa_pass:true`에 도달할 때까지 사이클이 반복된다.
+QA에서 회귀가 발견되면 실패 리포트를 다음 build context로 넘기고, 모든 task가 `build_pass:true`와 `qa_pass:true`에 도달할 때까지 사이클이 반복된다. 단순 fail 리포트만 반복 커밋하지 않으며, pass/fix/block 같은 의미 있는 상태 전환만 커밋한다.
 
 ## 설정
 
@@ -91,9 +91,11 @@ QA에서 회귀가 발견되면 `build_pass`가 초기화되고, 모든 task가 
 | `commands.*` | build/lint/test/typecheck 명령어 (`{scope}` 치환) |
 | `commands.quick` | 선택 사항. build iteration에서 사용할 빠른 검증 명령 |
 | `commands.final` | 선택 사항. QA 전에 scope별로 한 번 실행할 최종 검증 명령 |
+| `commands.affected` | 선택 사항. 교차 회귀 검증 명령. `HEAD^1` 대신 `${RALPH_BASE_REF:-origin/main}`처럼 안정적인 기준 ref 사용을 권장 |
 | `builder.command` | plan + build 에이전트 CLI (기본: `claude` Opus) |
 | `builder.batchSize` | 한 agent 호출에서 처리할 같은 scope의 준비된 task 최대 개수 |
 | `evaluator.command` | QA 에이전트 CLI (기본: `codex exec`). builder와 다른 CLI를 권장 — 새 시각으로 검증하기 위함 |
+| `evaluator.maxRetries` | task별 QA 재시도 상한. 상한 도달 시 `qa_status:"blocked"`로 전환하고 loop를 멈춤 |
 | `validation.runtimeSmoke` | `"perTask"`는 기존처럼 build 중 스모크, `"final"`은 QA 전 한 번만 스모크 |
 | `runtime.backend` | 백엔드 포트, 헬스체크 경로, dev 명령어 |
 | `runtime.frontend` | 프론트엔드 dev 명령어, preview URL |
@@ -113,6 +115,10 @@ QA에서 회귀가 발견되면 `build_pass`가 초기화되고, 모든 task가 
 | `ralph/qa-report.json` | task별 QA 시도 이력 |
 | `ralph/qa-hints.json` | Builder가 Evaluator에게 남기는 힌트 |
 | `ralph/.plan-complete` | Phase 1 완료 sentinel |
+
+`tasks.json`의 `qa_status`는 선택 필드다. 값이 없으면 일반 pending 상태로 취급한다. `blocked`는 acceptance 충돌이나 재시도 상한 도달처럼 사람의 판단이 필요한 상태이고, `infra_blocked`는 브라우저 에이전트/서버/credentials 같은 검증 인프라가 없어 QA를 진행할 수 없는 상태다.
+
+기존 프로젝트의 `ralph-config.json`에 `commands.affected`가 `HEAD^1`로 되어 있다면, QA/report 커밋이 쌓일 때 비교 기준이 흔들릴 수 있다. 가능하면 `RALPH_BASE_REF`를 지정하거나 템플릿 기본값처럼 `${RALPH_BASE_REF:-origin/main}` 기준으로 바꾼다.
 
 ## 초기화
 

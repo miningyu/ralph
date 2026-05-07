@@ -45,15 +45,76 @@ get_next_task() {
   jq -rn --slurpfile t ralph/tasks.json --slurpfile r ralph/qa-report.json --argjson cap "$MAX_RETRIES" '
     ($t[0]) as $tasks
     | ($r[0]) as $report
-    | ($tasks | map(. + {_attempts: ([$report[] | select(.task_id == .id)] | length)}) | map(select(.qa_pass != true and ._attempts < $cap)) | first) as $next
-    | if $next == null then "ALL_DONE"
+    | def spec_key($task): {
+        id: $task.id,
+        scope: $task.scope,
+        path: $task.path,
+        kind: $task.kind,
+        description: $task.description,
+        acceptance: ($task.acceptance // []),
+        dependent_on: ($task.dependent_on // []),
+        touches: ($task.touches // [])
+      } | @json;
+    def task_attempts($task): (spec_key($task)) as $key | [$report[] | select(.task_id == $task.id and (.task_spec_key // "") == $key)] | length;
+    ($tasks
+       | map(. as $task | $task + {_attempts: task_attempts($task), _spec_key: spec_key($task)})
+       | map(select(.qa_pass != true))
+       | map(select((.qa_status // "") as $s | ($s == "blocked" or $s == "infra_blocked") | not))
+      ) as $pending
+    | ($pending | map(select(._attempts < $cap)) | first) as $next
+    | if $next == null then
+        if ($pending | length) == 0 then "ALL_DONE" else "RETRY_EXHAUSTED" end
       else
         {main: $next,
          attempts: $next._attempts,
+         task_spec_key: $next._spec_key,
          dependencies: [$tasks[] as $t | $next.dependent_on // [] | if index($t.id) then $t else empty end]}
         | tojson
       end
   ' 2>/dev/null
+}
+
+mark_retry_exhausted() {
+  jq --slurpfile r ralph/qa-report.json --argjson cap "$MAX_RETRIES" '
+    ($r[0]) as $report
+    | def spec_key($task): {
+        id: $task.id,
+        scope: $task.scope,
+        path: $task.path,
+        kind: $task.kind,
+        description: $task.description,
+        acceptance: ($task.acceptance // []),
+        dependent_on: ($task.dependent_on // []),
+        touches: ($task.touches // [])
+      } | @json;
+    def task_attempts($task): (spec_key($task)) as $key | [$report[] | select(.task_id == $task.id and (.task_spec_key // "") == $key)] | length;
+    map(
+        if .qa_pass != true
+           and (((.qa_status // "") as $s | $s == "blocked" or $s == "infra_blocked") | not)
+           and (task_attempts(.) >= $cap)
+        then . + {
+          qa_status: "blocked",
+          qa_blocked_reason: ("retry limit exhausted (" + ((task_attempts(.)) | tostring) + "/" + ($cap | tostring) + ")")
+        }
+        else .
+        end
+      )
+  ' ralph/tasks.json > ralph/tasks.json.tmp && mv ralph/tasks.json.tmp ralph/tasks.json
+}
+
+stamp_report_entries() {
+  local task_id="$1"
+  local attempt="$2"
+  local task_spec_key="$3"
+
+  jq --arg id "$task_id" --argjson att "$attempt" --arg key "$task_spec_key" '
+    map(
+      if .task_id == $id and (.attempt // 0) == $att and ((.task_spec_key // "") == "")
+      then . + {task_spec_key: $key}
+      else .
+      end
+    )
+  ' ralph/qa-report.json > ralph/qa-report.json.tmp && mv ralph/qa-report.json.tmp ralph/qa-report.json
 }
 
 for ((i=1; i<=$ITERATIONS; i++)); do
@@ -62,8 +123,17 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   echo "--- QA iteration $i ($PASSED/$TOTAL qa_pass) ---"
 
   BUNDLE=$(get_next_task)
+  if [ "$BUNDLE" = "RETRY_EXHAUSTED" ]; then
+    echo "QA retry limit exhausted for at least one task. Marking unresolved tasks as qa_status:blocked."
+    mark_retry_exhausted
+    git add ralph/tasks.json ralph/qa-report.json 2>/dev/null || true
+    git commit -m "qa: block unresolved tasks after ${MAX_RETRIES} attempts" 2>/dev/null || true
+    git push 2>/dev/null || true
+    break
+  fi
+
   if [ "$BUNDLE" = "ALL_DONE" ] || [ -z "$BUNDLE" ]; then
-    echo "All tasks are qa_pass:true or retry limit exhausted."
+    echo "All tasks are qa_pass:true, blocked, or infra_blocked."
     break
   fi
 
@@ -73,6 +143,7 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   TASK_ID=$(jq -r '.main.id'      "$TASK_FILE")
   KIND=$(jq    -r '.main.kind'    "$TASK_FILE")
   ATTEMPT=$(jq -r '.attempts + 1' "$TASK_FILE")
+  TASK_SPEC_KEY=$(jq -r '.task_spec_key' "$TASK_FILE")
   echo "Testing: $TASK_ID ($KIND) — attempt $ATTEMPT/$MAX_RETRIES"
 
   start_dev_if_needed "$KIND"
@@ -123,18 +194,21 @@ Read the following files as needed:
 QA progress: $PASSED/$TOTAL features done
 TASK: $TASK_ID (kind: $KIND)
 ATTEMPT: $ATTEMPT of $MAX_RETRIES
+TASK_SPEC_KEY: $TASK_SPEC_KEY
 $PREVIEW_NOTE
 
 Test this ONE task thoroughly. Review the QA history above — if previous attempts failed, try a different angle.
 Then do the following:
-1. Append a NEW entry to ralph/qa-report.json with attempt: $ATTEMPT (do not overwrite previous entries).
+1. Append a NEW entry to ralph/qa-report.json with attempt: $ATTEMPT and task_spec_key: \"$TASK_SPEC_KEY\" (do not overwrite previous entries).
 2. Fix any bugs found within the allowed scope.
 3. Set qa_pass:true in ralph/tasks.json only when all acceptance criteria are verified and all validation commands exit 0; otherwise leave qa_pass:false.
-4. Run the validation commands from ralph-config.json for the task scope. All must exit 0 before setting qa_pass:true.
-5. git add the changed files, commit (qa: <task_id> attempt <n> — pass|fail|partial), git push.
-6. Output <promise>NEXT</promise> when done.")
+4. Run the validation commands from ralph-config.json for the task scope. If a command has a documented baseline failure, compare against the baseline and changed/relevant files instead of treating unrelated pre-existing diagnostics as this task's failure.
+5. If validation is blocked by missing local infrastructure (browser agent unavailable, required dev server unavailable, credentials missing), set qa_status:\"infra_blocked\" for this task and describe the missing prerequisite.
+6. Commit and push only pass results, direct code fixes, or qa_status transitions such as blocked/infra_blocked. Do not commit repeated fail-only qa-report entries.
+7. Output <promise>NEXT</promise> when done.")
 
   echo "$result"
+  stamp_report_entries "$TASK_ID" "$ATTEMPT" "$TASK_SPEC_KEY"
   rm -f "$TASK_FILE"
 
   if [[ "$result" == *"<promise>NEXT</promise>"* ]]; then
@@ -146,6 +220,7 @@ Then do the following:
   jq --arg id "$TASK_ID" --argjson att "$ATTEMPT" '
     . + [{task_id: $id, attempt: $att, status: "partial", tested_steps: ["Evaluator crashed or timed out"], bugs_found: [], fix_description: "Evaluator did not complete"}]
   ' ralph/qa-report.json > ralph/qa-report.json.tmp && mv ralph/qa-report.json.tmp ralph/qa-report.json
+  stamp_report_entries "$TASK_ID" "$ATTEMPT" "$TASK_SPEC_KEY"
   sleep 3
 done
 
