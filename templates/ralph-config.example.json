@@ -14,6 +14,8 @@
   },
   "commands": {
     "install":   "pnpm install --frozen-lockfile",
+    "quick":     "pnpm exec turbo run test --filter={scope}",
+    "final":     "pnpm exec turbo run lint test build --filter={scope}",
     "lint":      "pnpm exec turbo run lint --filter={scope}",
     "test":      "pnpm exec turbo run test --filter={scope}",
     "testE2E":   "pnpm exec turbo run test:e2e --filter={scope}",
@@ -28,7 +30,11 @@
   },
   "builder": {
     "command": "claude -p --dangerously-skip-permissions --model claude-opus-4-7",
+    "batchSize": 3,
     "iterationTimeoutSeconds": 1200
+  },
+  "validation": {
+    "runtimeSmoke": "final"
   },
   "runtime": {
     "backend": {

@@ -11,7 +11,7 @@ ralph run
   │                     "JWT 인증 추가, refresh token 포함"
   │                     → [T-001] JWT 전략  [T-002] refresh 엔드포인트  [T-003] 가드 ...
   │
-  ├─ Phase 2 (build)  — task 하나씩 구현 (build_pass:true까지 반복)
+  ├─ Phase 2 (build)  — 같은 scope의 작은 task batch 구현 (build_pass:true까지 반복)
   │
   └─ Phase 3 (qa)     — 독립 평가 에이전트가 각 task 검증 (qa_pass:true까지 반복)
                └─ 실패 시 → 실패 원인 전체를 다음 build iteration에 주입
@@ -71,7 +71,9 @@ ralph reset   # 현재 사이클 archive 후 초기화
 
 **Phase 1 — Plan**: `tasks.raw.md`의 자유형식 요구사항을 읽고, 구현 단위로 `tasks.json`에 task를 생성한다. 각 task는 scope, 수락 기준(acceptance criteria), 의존관계를 포함한다.
 
-**Phase 2 — Build**: `build_pass:false`인 task를 하나 골라 구현한다. lint → typecheck → test → 런타임 스모크 테스트까지 통과해야 `build_pass:true`로 마킹하고 커밋한다.
+**Phase 2 — Build**: 첫 번째 `build_pass:false` task를 기준으로 같은 scope의 준비된 task를 `builder.batchSize`개까지 묶어 구현한다. `commands.quick`이 있으면 batch 단위로 빠른 검증을 실행하고, 완료한 task를 `build_pass:true`로 마킹한 뒤 한 번 커밋한다.
+
+모든 build task가 통과하면 watchdog이 QA 전에 `commands.final`을 scope별로 한 번 실행한다. `validation.runtimeSmoke`가 `"final"`이면 백엔드/프론트엔드 런타임 스모크도 매 build iteration이 아니라 이 final gate에서 한 번 실행한다.
 
 **Phase 3 — QA**: Builder와 독립된 Evaluator가 각 task의 수락 기준을 검증한다. 버그 발견 시 `qa-report.json`에 상세 리포트를 기록하고, 다음 build iteration에 실패 원인 전체를 context로 주입한다.
 
@@ -87,8 +89,12 @@ QA에서 회귀가 발견되면 `build_pass`가 초기화되고, 모든 task가 
 | `workspaces.apps[]` | 앱 목록 (name, path, kind, 테스트 여부) |
 | `workspaces.packages[]` | 공유 라이브러리 목록 |
 | `commands.*` | build/lint/test/typecheck 명령어 (`{scope}` 치환) |
+| `commands.quick` | 선택 사항. build iteration에서 사용할 빠른 검증 명령 |
+| `commands.final` | 선택 사항. QA 전에 scope별로 한 번 실행할 최종 검증 명령 |
 | `builder.command` | plan + build 에이전트 CLI (기본: `claude` Opus) |
+| `builder.batchSize` | 한 agent 호출에서 처리할 같은 scope의 준비된 task 최대 개수 |
 | `evaluator.command` | QA 에이전트 CLI (기본: `codex exec`). builder와 다른 CLI를 권장 — 새 시각으로 검증하기 위함 |
+| `validation.runtimeSmoke` | `"perTask"`는 기존처럼 build 중 스모크, `"final"`은 QA 전 한 번만 스모크 |
 | `runtime.backend` | 백엔드 포트, 헬스체크 경로, dev 명령어 |
 | `runtime.frontend` | 프론트엔드 dev 명령어, preview URL |
 | `guardrails[]` | 모든 에이전트 프롬프트에 주입되는 제약 규칙 |

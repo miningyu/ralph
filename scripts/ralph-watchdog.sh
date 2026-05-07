@@ -50,6 +50,106 @@ all_qa_passed() {
 }
 plan_done() { [ -f ralph/.plan-complete ]; }
 
+reset_pass_flags() {
+  jq '
+    map(.build_pass = false | .qa_pass = false)
+  ' ralph/tasks.json > ralph/tasks.json.tmp && mv ralph/tasks.json.tmp ralph/tasks.json
+}
+
+run_scoped_command() {
+  local label="$1"
+  local template="$2"
+  local scope="$3"
+  local command="${template//\{scope\}/$scope}"
+
+  [ -z "$command" ] && return 0
+  log "Phase 2: final $label for $scope: $command"
+  bash -lc "$command" >> "$LOG_FILE" 2>&1
+}
+
+run_final_validation() {
+  local template
+  template=$(jq -r '.commands.final // .commands.finalValidation // empty' ralph/ralph-config.json)
+  [ -z "$template" ] && return 0
+
+  local scope
+  while IFS= read -r scope; do
+    [ -z "$scope" ] && continue
+    if ! run_scoped_command "validation" "$template" "$scope"; then
+      log "Phase 2: final validation failed for $scope."
+      return 1
+    fi
+  done < <(jq -r '[.[] | .scope // empty] | unique[]' ralph/tasks.json)
+
+  log "Phase 2: final validation passed."
+}
+
+http_responsive() {
+  local url="$1"
+  local status
+  status=$(curl -o /dev/null -s -w "%{http_code}" --max-time 5 "$url" 2>/dev/null || echo "000")
+  [ "$status" != "000" ]
+}
+
+wait_for_url() {
+  local url="$1"
+  local waited=0
+  while [ "$waited" -lt 120 ]; do
+    if http_responsive "$url"; then
+      return 0
+    fi
+    sleep 5
+    waited=$((waited + 5))
+  done
+  return 1
+}
+
+run_final_runtime_smoke() {
+  local mode
+  mode=$(jq -r '.validation.runtimeSmoke // "perTask"' ralph/ralph-config.json)
+  [ "$mode" = "final" ] || return 0
+
+  local backend_port backend_health backend_dev backend_url
+  backend_port=$(jq -r '.runtime.backend.port // empty' ralph/ralph-config.json)
+  backend_health=$(jq -r '.runtime.backend.healthPath // "/"' ralph/ralph-config.json)
+  backend_dev=$(jq -r '.runtime.backend.devCommand // empty' ralph/ralph-config.json)
+
+  if [ -n "$backend_port" ]; then
+    backend_url="http://localhost:${backend_port}${backend_health}"
+    if ! http_responsive "$backend_url" && [ -n "$backend_dev" ]; then
+      mkdir -p ralph/runtime-logs
+      local backend_log="ralph/runtime-logs/backend-final-$(date +%Y%m%d-%H%M%S).log"
+      log "Phase 2: starting backend for final runtime smoke: $backend_dev"
+      bash -lc "$backend_dev" >"$backend_log" 2>&1 &
+      disown "$!" 2>/dev/null || true
+    fi
+    if ! wait_for_url "$backend_url"; then
+      log "Phase 2: final backend runtime smoke failed: $backend_url"
+      return 1
+    fi
+    log "Phase 2: final backend runtime smoke passed: $backend_url"
+  fi
+
+  local frontend_url frontend_dev
+  frontend_url=$(jq -r '.runtime.frontend.previewUrl // empty' ralph/ralph-config.json)
+  frontend_dev=$(jq -r '.runtime.frontend.devCommand // empty' ralph/ralph-config.json)
+
+  if [ -n "$frontend_url" ]; then
+    if ! http_responsive "$frontend_url" && [ -n "$frontend_dev" ]; then
+      mkdir -p ralph/runtime-logs
+      local frontend_log="ralph/runtime-logs/frontend-final-$(date +%Y%m%d-%H%M%S).log"
+      log "Phase 2: starting frontend for final runtime smoke: $frontend_dev"
+      bash -lc "$frontend_dev" >"$frontend_log" 2>&1 &
+      disown "$!" 2>/dev/null || true
+    fi
+    if ! wait_for_url "$frontend_url"; then
+      log "Phase 2: final frontend runtime smoke failed: $frontend_url"
+      return 1
+    fi
+    log "Phase 2: final frontend runtime smoke passed: $frontend_url"
+  fi
+}
+
 cron_backup() {
   git status --porcelain ralph/ 2>/dev/null | grep -q . || return 0
   git add ralph/ 2>/dev/null || true
@@ -100,6 +200,18 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
     cron_backup
     if all_built; then
       log "Phase 2: all $(total_tasks) tasks build_pass."
+      if ! run_final_validation; then
+        log "Phase 2: final validation failed. Resetting pass flags and returning to build."
+        reset_pass_flags
+        cron_backup
+        continue
+      fi
+      if ! run_final_runtime_smoke; then
+        log "Phase 2: final runtime smoke failed. Resetting pass flags and returning to build."
+        reset_pass_flags
+        cron_backup
+        continue
+      fi
       break
     fi
     if [ "$rc" -eq 2 ]; then

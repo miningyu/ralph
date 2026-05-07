@@ -11,7 +11,7 @@ ralph run
   │                     "Add JWT auth with refresh token"
   │                     → [T-001] JWT strategy  [T-002] refresh endpoint  [T-003] guard ...
   │
-  ├─ Phase 2 (build)  — implements one task per iteration (build_pass:true)
+  ├─ Phase 2 (build)  — implements a small same-scope task batch (build_pass:true)
   │
   └─ Phase 3 (qa)     — independent evaluator validates each task (qa_pass:true)
                └─ on failure → full failure context injected into next build iteration
@@ -72,7 +72,9 @@ ralph reset   # archive current cycle, start fresh
 
 **Phase 1 — Plan**: Reads free-form requirements from `tasks.raw.md` and breaks them into structured tasks in `tasks.json`. Each task gets a scope, acceptance criteria, and dependency links.
 
-**Phase 2 — Build**: Picks the first `build_pass:false` task and implements it. Runs lint → typecheck → test → runtime smoke before marking `build_pass:true` and committing.
+**Phase 2 — Build**: Picks the first `build_pass:false` task, then batches up to `builder.batchSize` ready tasks with the same scope. It runs `commands.quick` for the batch when configured, marks completed tasks `build_pass:true`, and commits once.
+
+After all build tasks pass, the watchdog runs `commands.final` once per touched scope when configured. If `validation.runtimeSmoke` is `"final"`, backend/frontend runtime smoke also runs once at this final gate instead of during every build iteration.
 
 **Phase 3 — QA**: An independent Evaluator agent (not the builder) validates each task against its acceptance criteria. On failure, it writes a detailed bug report to `qa-report.json`. The next build iteration receives the full failure context to fix the root cause.
 
@@ -88,8 +90,12 @@ If QA finds a regression, `build_pass` is reset and the cycle repeats until all 
 | `workspaces.apps[]` | Apps — name, path, kind (backend/frontend), test flags |
 | `workspaces.packages[]` | Shared library entries |
 | `commands.*` | build/lint/test/typecheck commands (`{scope}` substituted at runtime) |
+| `commands.quick` | Optional fast build-iteration validation command |
+| `commands.final` | Optional final validation command run once per touched scope before QA |
 | `builder.command` | Agent CLI for plan + build (default: `claude` with Opus) |
+| `builder.batchSize` | Maximum number of ready same-scope tasks to build in one agent invocation |
 | `evaluator.command` | Agent CLI for QA (default: `codex exec`) — keep this distinct from `builder.command` so QA validates from a fresh perspective |
+| `validation.runtimeSmoke` | `"perTask"` for legacy build-time smoke, or `"final"` to run runtime smoke once before QA |
 | `runtime.backend` | Port, health path, dev command for backend auto-restart |
 | `runtime.frontend` | Dev command, preview URL for browser-based QA |
 | `guardrails[]` | Rules injected into every agent prompt |
