@@ -20,8 +20,7 @@
     "test":      "pnpm exec turbo run test --filter={scope}",
     "testE2E":   "pnpm exec turbo run test:e2e --filter={scope}",
     "build":     "pnpm exec turbo run build --filter={scope}...",
-    "typecheck": "pnpm exec turbo run check --filter={scope}",
-    "affected":  "pnpm exec turbo run lint test build --filter='...[${RALPH_BASE_REF:-origin/main}]'"
+    "typecheck": "pnpm exec turbo run check --filter={scope}"
   },
   "evaluator": {
     "command": "codex exec --dangerously-bypass-approvals-and-sandbox",

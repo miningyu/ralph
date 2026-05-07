@@ -25,8 +25,7 @@ You can also read from disk: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-
 5. **Frontend tasks (`kind: "frontend"`):** start the dev server using `runtime.frontend.devCommand` from `ralph-config.json`, navigate to `runtime.frontend.previewUrl`, and manually walk through every acceptance criterion using the configured browser agent. Take screenshots if the agent supports it.
 6. **Backend tasks (`kind: "backend"`):** run e2e tests if they exist; otherwise inspect the controller/service code paths and reason through each acceptance criterion. If the dev server is running, hit the API directly with curl.
 7. **Library tasks (`kind: "library"`):** focus on the public API surface and how every consumer in `touches[]` uses it. Run the consumer test suites as well.
-8. **Cross-task regression check:** if `commands.affected` is set in `ralph-config.json`, run `{affected}` to surface side effects in components the builder did not list in `touches[]`. Skip this step if `commands.affected` is not set.
-   - Do not use a QA/report-only commit as the baseline for affected checks. If the configured command compares against `HEAD^1` and `HEAD` is a Ralph QA/report/backup commit, report that the affected baseline is unsafe and use the configured stable base ref if available.
+8. **Regression scope:** validate the task scope and every workspace listed in `touches[]`. Do not run a broad affected-by-git-history command unless the project has explicitly put it in the task acceptance criteria.
 
 ## How to record results
 Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entries):

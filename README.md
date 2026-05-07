@@ -92,7 +92,6 @@ If QA finds a regression, the failure report is fed back into the next build con
 | `commands.*` | build/lint/test/typecheck commands (`{scope}` substituted at runtime) |
 | `commands.quick` | Optional fast build-iteration validation command |
 | `commands.final` | Optional final validation command run once per touched scope before QA |
-| `commands.affected` | Optional cross-task regression command. Prefer a stable base ref such as `${RALPH_BASE_REF:-origin/main}` instead of `HEAD^1` |
 | `builder.command` | Agent CLI for plan + build (default: `claude` with Opus) |
 | `builder.batchSize` | Maximum number of ready same-scope tasks to build in one agent invocation |
 | `evaluator.command` | Agent CLI for QA (default: `codex exec`) — keep this distinct from `builder.command` so QA validates from a fresh perspective |
@@ -118,8 +117,6 @@ After `ralph init`, your project gets a `ralph/` directory:
 | `ralph/.plan-complete` | Sentinel — Phase 1 is done |
 
 `qa_status` in `tasks.json` is optional. Missing means the task is still pending QA. `blocked` means Ralph needs human input because retries were exhausted or acceptance criteria conflict with the current codebase. `infra_blocked` means QA could not run because a local prerequisite such as a browser agent, service, or credential is unavailable.
-
-If an existing project uses `HEAD^1` in `ralph-config.json.commands.affected`, change it to a stable base ref or set `RALPH_BASE_REF`. QA/report commits can otherwise become the comparison baseline and make affected checks validate Ralph state changes instead of implementation changes.
 
 ## Reset
 
