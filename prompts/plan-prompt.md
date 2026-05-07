@@ -18,6 +18,7 @@ Each invocation refines exactly **one** unit from the backlog and exits.
 4. **One atomic change unit per task.** If a single work unit touches more than 2 `workspaces` entries (app or package) and more than 300 lines, split it.
 5. **Never delete completed tasks** (`build_pass:true` or `qa_pass:true`). Append new items; refine incomplete items in-place.
 6. **Follow `ralph-config.json` guardrails to the letter.**
+7. **Match the language of `tasks.raw.md`.** Detect the dominant natural language of `tasks.raw.md` (e.g., Korean vs. English) and write every natural-language field in `tasks.json` — `description`, `acceptance[]`, and any free-form notes — in that same language. If `tasks.raw.md` is in Korean, the task fields must be in Korean; if it is in English, write them in English. Field names, enum values, `scope`, `path`, file paths, identifiers, and code snippets stay verbatim. If `tasks.raw.md` is absent or empty, default to the language used by existing tasks in `tasks.json`; if both are empty, default to English.
 
 ## What to do this iteration
 Choose exactly **one** of the following modes (in priority order):
