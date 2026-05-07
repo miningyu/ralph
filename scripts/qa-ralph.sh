@@ -204,8 +204,9 @@ Then do the following:
 3. Set qa_pass:true in ralph/tasks.json only when all acceptance criteria are verified and all validation commands exit 0; otherwise leave qa_pass:false.
 4. Run the validation commands from ralph-config.json for the task scope. If a command has a documented baseline failure, compare against the baseline and changed/relevant files instead of treating unrelated pre-existing diagnostics as this task's failure.
 5. If validation is blocked by missing local infrastructure (browser agent unavailable, required dev server unavailable, credentials missing), set qa_status:\"infra_blocked\" for this task and describe the missing prerequisite.
-6. Commit and push only pass results, direct code fixes, or qa_status transitions such as blocked/infra_blocked. Do not commit repeated fail-only qa-report entries.
-7. Output <promise>NEXT</promise> when done.")
+6. Do not modify task spec fields in ralph/tasks.json during QA: id, priority, scope, path, description, acceptance, dependent_on, and touches are immutable after plan completion. If acceptance conflicts with current code or later tasks, leave qa_pass:false and set qa_status:\"blocked\" with qa_blocked_reason instead of changing the acceptance.
+7. Commit and push only pass results, direct code fixes, or qa_status transitions such as blocked/infra_blocked. Do not commit repeated fail-only qa-report entries.
+8. Output <promise>NEXT</promise> when done.")
 
   echo "$result"
   stamp_report_entries "$TASK_ID" "$ATTEMPT" "$TASK_SPEC_KEY"

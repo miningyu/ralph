@@ -14,6 +14,7 @@ You can also read from disk: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-
 
 ## Evaluation procedure
 1. **Read the acceptance criteria.** These are the pass/fail standard.
+   Do not reinterpret, weaken, or rewrite them to match the current implementation.
 2. **Read the diff for this task:** run `git log --oneline -- <path>`, then `git show` the most recent commit that touched the task's `path`. Understand what actually changed.
 3. **Static review:** look for missing input validation, swallowed errors, input mutation, broken types, and public API drift in `workspaces.packages[]` shared libraries not propagated to consumers in `touches[]`.
 4. **Run validation commands from `ralph-config.json.commands.*` for the task scope:**
@@ -49,13 +50,16 @@ Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entr
 - **Bug found and fixed directly** → re-run all commands; set `status:"pass"` only if they are all green. Otherwise `status:"fail"`.
 - **Bug that can only be fixed outside `touches[]`** → `status:"fail"`, leave `qa_pass:false`, describe the boundary hit in `fix_description`.
 - **Validation command times out or crashes because local infrastructure is missing** (browser agent unavailable, required dev server unavailable, credentials missing, service dependency not running) → `status:"partial"`, leave `qa_pass:false`, set `qa_status:"infra_blocked"` on the task, and describe the prerequisite.
-- **Repeated failure with no safe in-scope fix** → leave `qa_pass:false`; if the retry limit has been reached or the acceptance criteria conflict with later tasks/current HEAD, set `qa_status:"blocked"` with `qa_blocked_reason`.
+- **Acceptance conflicts with current implementation or later tasks** → do not edit `acceptance` or pass the task by changing the standard. Record `status:"fail"` or `status:"partial"`, leave `qa_pass:false`, set `qa_status:"blocked"` with `qa_blocked_reason`, and explain that a separate plan amendment is required.
+- **Repeated failure with no safe in-scope fix** → leave `qa_pass:false`; if the retry limit has been reached, set `qa_status:"blocked"` with `qa_blocked_reason`.
 
 ## Hard rules
 1. Same scope rules as the builder — only modify files within the task's `path` and `touches[]` workspaces.
 2. **Never set `qa_pass:true` for task-caused validation failures.** Re-run after fixing; if still failing because of this task, mark `fail`. If a non-zero command is an unrelated documented baseline failure, record the baseline comparison and changed-file check.
 3. Follow `ralph-config.json.guardrails`.
 4. Do not delete or rewrite previous entries in `qa-report.json`. Append-only.
+5. **Never modify task spec fields in QA.** `id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, and `touches` are immutable after plan completion. QA may update only `qa_pass`, `qa_status`, and `qa_blocked_reason` in `tasks.json`, plus append `qa-report.json`. If you changed a spec field during this run, the QA result is invalid: revert that spec edit, leave `qa_pass:false`, and do not mark the task as pass.
+6. `task_spec_key` is an audit snapshot of the runtime task spec. Do not use it as authority to redefine, relax, or overwrite the task's acceptance criteria.
 
 ## After recording
 1. Stage `ralph/` and the paths corresponding to the task's `path` and `touches[]` only for pass results, direct code fixes, or `qa_status` transitions such as `blocked`/`infra_blocked`.

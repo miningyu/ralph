@@ -33,6 +33,7 @@ Process tasks in the order shown. Do not edit or mark tasks outside `TASK_BATCH`
 3. **Do not modify package manager configuration.** Do not edit lockfiles or workspace config files (e.g. `pnpm-workspace.yaml`, `package.json` workspaces field). Do not introduce build commands not present in `ralph-config.json`'s `commands.*`.
 4. **Update tests in the same batch.** Every new behavior must have at least one test when the project has a relevant test runner. If several batch tasks touch the same controller/service/user flow, prefer one focused test update that covers the combined behavior.
 5. **Propagate public API changes.** If you change an exported symbol from a shared library in `workspaces.packages[]`, every consumer in `touches[]` must compile and pass tests within the same iteration.
+6. **Do not change task specs after plan completion.** In the build phase, `id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, and `touches` are immutable. You may update only execution state such as `build_pass` in `tasks.json`, append `qa-hints.json`, and append `build-progress.txt`. If the implementation reveals that an acceptance criterion is wrong, out of scope, or conflicts with current code/later tasks, do not relax the criterion and do not add a new task; stop, leave `build_pass:false`, record the conflict, and emit `<promise>BLOCKED</promise>`.
 
 ## Required validation before committing
 Prefer the quick validation command when configured:
@@ -117,7 +118,7 @@ If **even one** non-whitelisted ERROR line was added, do not set `build_pass:tru
 - If you reused an existing user session, do not kill it.
 
 ## After all validations pass
-1. Set `build_pass: true` on every completed item in `TASK_BATCH`. Do not touch `qa_pass`.
+1. Set `build_pass: true` on every completed item in `TASK_BATCH`. Do not touch `qa_pass` or any immutable task spec field.
 2. (Optional) Append entries to `qa-hints.json`: `{ "task_id": "...", "tests_written": ["..."], "needs_deeper_qa": ["..."] }` — flag acceptance criteria that automated tests do **not** cover.
 3. Append a one-line summary to `build-progress.txt`: `iter <n>: <task_id>[,<task_id>...] [<mode>] — <short summary>`.
 4. Stage only the files you actually changed. Avoid `git add -A`, which may pull in unrelated reformatting.
