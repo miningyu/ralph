@@ -21,14 +21,24 @@ Each invocation refines exactly **one** unit from the backlog and exits.
 7. **Match the language of `tasks.raw.md`.** Detect the dominant natural language of `tasks.raw.md` (e.g., Korean vs. English) and write every natural-language field in `tasks.json` — `description`, `acceptance[]`, and any free-form notes — in that same language. If `tasks.raw.md` is in Korean, the task fields must be in Korean; if it is in English, write them in English. Field names, enum values, `scope`, `path`, file paths, identifiers, and code snippets stay verbatim. If `tasks.raw.md` is absent or empty, default to the language used by existing tasks in `tasks.json`; if both are empty, default to English.
 
 ## What to do this iteration
-Choose exactly **one** of the following modes (in priority order):
+Choose exactly **one** of the following modes (in priority order). Planning is
+deliberately multi-pass: scope analysis → bootstrap → structural review →
+field refinement → coverage close-out → complete. Each iteration moves exactly
+one step.
 
-- **MODE A — Bootstrap:** `tasks.json` is empty or `[]`.
-  Read `tasks.raw.md` (if present) and the repository. **Your job is to expand
-  the user's request into every atomic task the work actually requires** —
-  do not just echo the user's wording back. The user's prompt may be terse
-  ("add e2e for chat module") or verbose; either way, decompose it based on
-  what the codebase reveals about true scope.
+- **MODE A — Scope analysis (must run before bootstrap):** `tasks.json` is empty or `[]` AND `plan-progress.txt` does NOT yet contain a `## Scope analysis` block.
+
+  Read `tasks.raw.md` (if present) and the repository. **Do not write any tasks yet.** Instead, append a `## Scope analysis` block to `plan-progress.txt` covering:
+  - **Affected surfaces** — every file, module, route, package, or seam the work will likely touch, with paths grounded in real code (not guessed).
+  - **Decisions required** — open design questions the implementer must resolve (e.g., "extend existing helper vs. extract new one?", "where does X live now?").
+  - **Risks / cross-cutting concerns** — migrations, public-API exposure, shared-library impact, data-shape changes, ordering constraints.
+  - **Atomic unit candidates** — a draft list of work units (one line each); these become tasks in MODE B.
+
+  This block grounds the backlog in the real codebase so MODE B can decompose deliberately instead of paraphrasing the user's request. Exit.
+
+- **MODE B — Bootstrap from analysis:** `tasks.json` is empty or `[]` AND a `## Scope analysis` block exists in `plan-progress.txt`.
+
+  Use the scope analysis to expand the user's request into every atomic task the work actually requires — do not just echo the user's wording back. Each task's `description` and `acceptance[]` should trace back to specific bullets in the analysis (affected surface → task; decision → acceptance criterion).
 
   Emit as many tasks as the work demands — **there is no upper bound**.
   Calibration ranges (use as guidance, not as caps):
@@ -40,18 +50,24 @@ Choose exactly **one** of the following modes (in priority order):
   | Domain-wide test/refactor (e.g., e2e for one module) | 10–30 |
   | Cross-cutting refactor or migration | 30+ |
 
-  When in doubt, prefer **more smaller tasks over fewer larger ones**. Catching
-  oversized tasks later via MODE B refinement is expensive and tends to bundle
-  unrelated work; over-decomposition only costs extra QA iterations, which are
-  cheap. Exit after writing the initial backlog.
+  When in doubt, prefer **more smaller tasks over fewer larger ones**. Catching oversized tasks later via MODE C/D refinement is expensive and tends to bundle unrelated work; over-decomposition only costs extra QA iterations, which are cheap. Exit after writing the initial backlog.
 
-- **MODE B — Refine one task:** At least one task has a `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, or an unverified `scope`.
+- **MODE C — Structural review (split or merge one task):** No bootstrap pending, but at least one task is structurally problematic. Triggers (in priority order):
+  1. **Split candidate** — a single task has ≥4 entries in `acceptance[]`, OR touches ≥2 distinct `workspaces` scopes, OR its `description` joins multiple unrelated outcomes with "and" / "및" / "그리고" / "," / "또한".
+  2. **Merge candidate** — two sibling tasks share ≥2 identical or paraphrased acceptance items, or their descriptions describe the same outcome from different angles.
+
+  Pick the first violator. Either split into multiple atomic tasks (preserve the original id on the largest piece; assign fresh ids to the new pieces) or merge two tasks into one (drop the duplicate id). Update every `dependent_on` reference that points at affected ids. Exit.
+
+- **MODE D — Field refinement:** No structural issues remain, but at least one task has a `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, or an unverified `scope`.
   Pick the first such task. Read the relevant code under its `path`. Tighten the fields. Exit.
 
-- **MODE C — Add one new task:** There is work in `tasks.raw.md` not yet reflected in `tasks.json`.
-  Add exactly one new task. Exit.
+- **MODE E — Coverage close-out (add one task per uncovered raw item):** No structural or field issues remain.
 
-- **MODE D — Plan complete:** All tasks have a verified scope, ≥1 acceptance criterion, resolved dependencies, and `tasks.raw.md` is fully covered (or absent).
+  Build (or rebuild) a `## Coverage map` block at the bottom of `plan-progress.txt`. For each numbered or bulleted requirement in `tasks.raw.md`, write one line: `<short paraphrase> → <task id(s) that cover it, or UNCOVERED>`. If `tasks.raw.md` is absent, write `## Coverage map\n(no tasks.raw.md — coverage trivially complete)` and fall through to MODE F.
+
+  If any line is `UNCOVERED`, add exactly one new task to close the first gap and exit. Otherwise the coverage map is complete; exit and let the next iteration enter MODE F.
+
+- **MODE F — Plan complete:** All tasks have a verified scope, ≥1 acceptance criterion, resolved dependencies, and the latest `## Coverage map` block in `plan-progress.txt` contains zero `UNCOVERED` lines (or notes the absence of `tasks.raw.md`).
   Touch `ralph/.plan-complete` and emit `<promise>PLAN_COMPLETE</promise>`.
 
 ## After modifying `tasks.json`
