@@ -25,7 +25,11 @@
   "evaluator": {
     "command": "codex exec --dangerously-bypass-approvals-and-sandbox",
     "maxRetries": 5,
-    "iterationTimeoutSeconds": 1800
+    "iterationTimeoutSeconds": 600,
+    "kindTimeoutOverride": {
+      "frontend": 1800
+    },
+    "cacheDir": "ralph/.qa-cache"
   },
   "builder": {
     "command": "claude -p --dangerously-skip-permissions --model claude-opus-4-7",

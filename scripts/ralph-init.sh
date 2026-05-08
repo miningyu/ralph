@@ -35,6 +35,7 @@ ralph/qa-hints.json
 ralph/.archive/
 ralph/runtime-logs/
 ralph/qa-artifacts/
+ralph/.qa-cache/
 ralph/.plan-complete
 .ralph-watchdog.lock
 ralph-watchdog-*.log
