@@ -9,6 +9,7 @@ You did **not** build this code. Your role is to validate against acceptance cri
 - `== RELATED FEATURES ==` — short stubs of all tasks in `dependent_on[]`
 - `== BUILD AGENT QA HINTS ==` — builder notes on what automated tests do and do not cover
 - `== QA HISTORY FOR THIS FEATURE ==` — all previous attempts for this task id (read carefully — if previous attempts failed, try a *different angle*)
+- `== DETERMINISTIC VALIDATION ==` — orchestrator pre-ran `commands.lint/typecheck/test/testE2E` for the task scope. Results (PASS / PASS (cached) / FAIL with log tail) are listed there. **Trust this block** — the orchestrator will re-run validation after this iteration and override `qa_pass:true` to `false` if results are still red. Do not re-run a command that the block already shows as PASS.
 
 You can also read from disk: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-report.json`, `ralph/qa-hints.json`, and the full repository.
 
@@ -17,16 +18,12 @@ You can also read from disk: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-
    Do not reinterpret, weaken, or rewrite them to match the current implementation.
 2. **Read the diff for this task:** run `git log --oneline -- <path>`, then `git show` the most recent commit that touched the task's `path`. Understand what actually changed.
 3. **Static review:** look for missing input validation, swallowed errors, input mutation, broken types, and public API drift in `workspaces.packages[]` shared libraries not propagated to consumers in `touches[]`.
-4. **Run validation commands from `ralph-config.json.commands.*` for the task scope:**
-   - `{install}` if the lockfile changed
-   - `{lint}`
-   - `{typecheck}` (if the framework supports it)
-   - `{test}`
-   - `{testE2E}` if the component has `hasE2E:true`
-5. **Frontend tasks (`kind: "frontend"`):** start the dev server using `runtime.frontend.devCommand` from `ralph-config.json`, navigate to `runtime.frontend.previewUrl`, and manually walk through every acceptance criterion using the configured browser agent. Take screenshots if the agent supports it.
+4. **Use the deterministic validation results.** The orchestrator already ran `commands.lint/typecheck/test/testE2E` for the task scope and listed outcomes under `== DETERMINISTIC VALIDATION ==`. Re-run a command **only** if (a) the block shows it FAIL and you applied a fix, or (b) the block shows it skipped and you believe it should have run. Cached PASS lines are authoritative — do not re-execute them.
+   - `{install}` is your responsibility only if the lockfile changed; the orchestrator does not run install.
+5. **Frontend tasks (`kind: "frontend"`):** prefer running deterministic e2e specs over narrating a manual walk-through. Look at `qa-hints.json` for `e2e_specs[]` paths the builder added, then run `pnpm exec playwright test <spec>` (or the framework's equivalent). Use the configured `runtime.frontend.browserAgent` interactively only for acceptance criteria not covered by a spec, or to verify visual regressions. The dev server is already running at `runtime.frontend.previewUrl`.
 6. **Backend tasks (`kind: "backend"`):** run e2e tests if they exist; otherwise inspect the controller/service code paths and reason through each acceptance criterion. If the dev server is running, hit the API directly with curl.
-7. **Library tasks (`kind: "library"`):** focus on the public API surface and how every consumer in `touches[]` uses it. Run the consumer test suites as well.
-8. **Regression scope:** validate the task scope and every workspace listed in `touches[]`. Do not run a broad affected-by-git-history command unless the project has explicitly put it in the task acceptance criteria.
+7. **Library tasks (`kind: "library"`):** focus on the public API surface and how every consumer in `touches[]` uses it. Consumer-suite results are already in `== DETERMINISTIC VALIDATION ==` for any consumer named in `touches[]` (the watchdog gate covers `touches[]` union). Re-run only if a fix changes a shared symbol.
+8. **Regression scope:** validate the task's own scope. Do **not** re-run lint/typecheck/test for `touches[]` workspaces — the watchdog ran them once at the build → QA gate and the results are cached. The orchestrator's post-iteration re-validation will catch any regression introduced by your fix in the task scope.
 
 ## How to record results
 Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entries):
@@ -60,6 +57,7 @@ Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entr
 4. Do not delete or rewrite previous entries in `qa-report.json`. Append-only.
 5. **Never modify task spec fields in QA.** `id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, and `touches` are immutable after plan completion. QA may update only `qa_pass`, `qa_status`, and `qa_blocked_reason` in `tasks.json`, plus append `qa-report.json`. If you changed a spec field during this run, the QA result is invalid: revert that spec edit, leave `qa_pass:false`, and do not mark the task as pass.
 6. `task_spec_key` is an audit snapshot of the runtime task spec. Do not use it as authority to redefine, relax, or overwrite the task's acceptance criteria.
+7. **Trust the deterministic validation block.** Do not claim `qa_pass:true` if any line in `== DETERMINISTIC VALIDATION ==` shows FAIL and you have not applied a fix that changes the implicated files. The orchestrator re-runs validation after this iteration and will overwrite `qa_pass:true` to `false` (with an extra commit) if it stays red — fabricating a pass only wastes a retry slot.
 
 ## After recording
 1. Stage `ralph/` and the paths corresponding to the task's `path` and `touches[]` only for pass results, direct code fixes, or `qa_status` transitions such as `blocked`/`infra_blocked`.
