@@ -91,19 +91,21 @@ get_task_batch() {
     ($tasks[0]) as $tasks
     | ($tasks | map(select(.build_pass != true))) as $pending
     | def dep_passed($dep): any($tasks[]; .id == $dep and .build_pass == true);
-    | if ($pending | length) == 0 then
+    def deps_ready($task): (($task.dependent_on // []) | all(dep_passed(.)));
+    if ($pending | length) == 0 then
         {status: "complete", tasks: []}
       else
-        ($pending[0]) as $first
-        | if ((($first.dependent_on // []) | all(dep_passed(.))) | not) then
-            {status: "blocked", blocked_task: $first}
+        ($pending | map(select(deps_ready(.)))) as $ready
+        | if ($ready | length) == 0 then
+            {status: "blocked", blocked_task: $pending[0]}
           else
+            ($ready[0]) as $first
+            |
             {
               status: "ready",
               tasks: ([
-                $pending[]
+                $ready[]
                 | select(.scope == $first.scope)
-                | select((.dependent_on // []) | all(dep_passed(.)))
               ] | .[0:$limit])
             }
           end

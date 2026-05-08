@@ -261,8 +261,10 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
       break
     fi
     log "Phase 2: building... $(count_passes)/$(total_tasks) (attempt $((build_restarts + 1)))"
-    rc=0; "${RALPH_INSTALL}/scripts/build-ralph.sh" || rc=$?
+    before_passes=$(count_passes)
+    rc=0; "${RALPH_INSTALL}/scripts/build-ralph.sh" >> "$LOG_FILE" 2>&1 || rc=$?
     cron_backup
+    after_passes=$(count_passes)
     if all_built; then
       log "Phase 2: all $(total_tasks) tasks build_pass."
       if ! run_final_validation; then
@@ -283,11 +285,21 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
       log "Phase 2: BLOCKED (unsatisfied dependencies). Check ralph/tasks.json. Aborting cycle."
       exit 2
     fi
+    if [ "$after_passes" -gt "$before_passes" ]; then
+      log "Phase 2: progress advanced ($before_passes → $after_passes). Continuing build."
+      build_restarts=0
+      continue
+    fi
     build_restarts=$((build_restarts + 1))
     REMAINING=$(($(total_tasks) - $(count_passes)))
     log "Phase 2: build stalled with $REMAINING task(s) remaining. Restarting..."
     sleep 5
   done
+
+  if ! all_built; then
+    log "Phase 2: build did not complete ($(count_passes)/$(total_tasks)). Stopping before QA."
+    exit 1
+  fi
 
   # ─── PHASE 3: QA ───
   MAX_QA_RESTARTS=10
