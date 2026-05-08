@@ -70,21 +70,77 @@ run_scoped_command() {
   bash -lc "$command" >> "$LOG_FILE" 2>&1
 }
 
+# Run lint/typecheck/test individually for a scope and write each result into
+# the QA cache so per-task QA can skip an LLM invocation on cached pass.
+warm_qa_cache_for_scope() {
+  local scope="$1"
+  local cfg=ralph/ralph-config.json
+  local name template cmd log_file exit_code cached
+  for name in lint typecheck test; do
+    template=$(jq -r --arg n "$name" '.commands[$n] // empty' "$cfg" 2>/dev/null)
+    [ -n "$template" ] || continue
+    cached=$(qa_cache_lookup "$scope" "$name")
+    if [ "$cached" = "0" ]; then
+      log "Phase 2 gate: ${scope}.${name} PASS (cached)"
+      continue
+    fi
+    cmd="${template//\{scope\}/$scope}"
+    mkdir -p ralph/.qa-cache/_logs
+    log_file="ralph/.qa-cache/_logs/gate-${scope}-${name}-$(date +%s).log"
+    log "Phase 2 gate: ${scope}.${name} running"
+    exit_code=0
+    bash -lc "$cmd" >"$log_file" 2>&1 || exit_code=$?
+    qa_cache_save "$scope" "$name" "$exit_code" "$log_file"
+    if [ "$exit_code" -ne 0 ]; then
+      log "Phase 2 gate: ${scope}.${name} FAILED (exit=${exit_code}). See $log_file"
+      tail -n 40 "$log_file" | sed 's/^/    /' | tee -a "$LOG_FILE" >/dev/null
+      return 1
+    fi
+    log "Phase 2 gate: ${scope}.${name} PASS"
+  done
+}
+
+# Iterate over the union of every task's scope and touches[]. Run individual
+# commands.lint/typecheck/test per workspace and cache them. Fall back to
+# commands.final (legacy) only when none of the individual commands are set.
 run_final_validation() {
-  local template
-  template=$(jq -r '.commands.final // .commands.finalValidation // empty' ralph/ralph-config.json)
-  [ -z "$template" ] && return 0
+  local has_individual=0
+  for c in lint typecheck test; do
+    if [ -n "$(jq -r --arg n "$c" '.commands[$n] // empty' ralph/ralph-config.json 2>/dev/null)" ]; then
+      has_individual=1
+      break
+    fi
+  done
+
+  local final_template
+  final_template=$(jq -r '.commands.final // .commands.finalValidation // empty' ralph/ralph-config.json)
+
+  if [ "$has_individual" -eq 0 ] && [ -z "$final_template" ]; then
+    return 0
+  fi
 
   local scope
   while IFS= read -r scope; do
     [ -z "$scope" ] && continue
-    if ! run_scoped_command "validation" "$template" "$scope"; then
-      log "Phase 2: final validation failed for $scope."
-      return 1
+    if [ "$has_individual" -eq 1 ]; then
+      if ! warm_qa_cache_for_scope "$scope"; then
+        log "Phase 2: final validation failed at $scope (individual commands)."
+        return 1
+      fi
+    elif [ -n "$final_template" ]; then
+      if ! run_scoped_command "validation" "$final_template" "$scope"; then
+        log "Phase 2: final validation failed for $scope."
+        return 1
+      fi
     fi
-  done < <(jq -r '[.[] | .scope // empty] | unique[]' ralph/tasks.json)
+  done < <(jq -r '
+    [.[] | (.scope // empty), (.touches // [] | .[])]
+    | map(select(. != null and . != ""))
+    | unique
+    | .[]
+  ' ralph/tasks.json)
 
-  log "Phase 2: final validation passed."
+  log "Phase 2: final validation passed (scope ∪ touches[] union)."
 }
 
 http_responsive() {
