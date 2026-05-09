@@ -18,6 +18,8 @@ Do not select tasks yourself. The runtime prompt includes `TASK_BATCH`, an array
 
 Process tasks in the order shown. Do not edit or mark tasks outside `TASK_BATCH`. If a listed task cannot be completed because a dependency is missing, stop immediately and emit `<promise>BLOCKED</promise>` — this signals that Phase 1 or the batch selector set the order incorrectly.
 
+Before implementing, read each task's `context` field if present. It captures Why / Current state / Gotcha that the planner extracted from scope analysis — treat it as authoritative on hidden constraints and decisions. Acceptance remains the pass/fail standard; context is the supporting situational awareness.
+
 ## Modes
 
 - **FRESH BUILD:** No entry for a task id exists in `qa-report.json`. Implement from scratch.
@@ -36,7 +38,7 @@ Process tasks in the order shown. Do not edit or mark tasks outside `TASK_BATCH`
 3. **Do not modify package manager configuration.** Do not edit lockfiles or workspace config files (e.g. `pnpm-workspace.yaml`, `package.json` workspaces field). Do not introduce build commands not present in `ralph-config.json`'s `commands.*`.
 4. **Update tests in the same batch.** Every new behavior must have at least one test when the project has a relevant test runner. If several batch tasks touch the same controller/service/user flow, prefer one focused test update that covers the combined behavior.
 5. **Propagate public API changes.** If you change an exported symbol from a shared library in `workspaces.packages[]`, every consumer in `touches[]` must compile and pass tests within the same iteration.
-6. **Do not change task specs after plan completion.** In the build phase, `id`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, and `touches` are immutable. You may update only execution state such as `build_pass` in `tasks.json`, append `qa-hints.json`, and append `build-progress.txt`. If the implementation reveals that an acceptance criterion is wrong, out of scope, or conflicts with current code/later tasks, do not relax the criterion and do not add a new task; stop, leave `build_pass:false`, record the conflict, and emit `<promise>BLOCKED</promise>`.
+6. **Do not change task specs after plan completion.** In the build phase, `id`, `scope`, `path`, `description`, `acceptance`, `context`, `dependent_on`, and `touches` are immutable. You may update only execution state such as `build_pass` in `tasks.json`, append `qa-hints.json`, and append `build-progress.txt`. If the implementation reveals that an acceptance criterion is wrong, out of scope, or conflicts with current code/later tasks, do not relax the criterion and do not add a new task; stop, leave `build_pass:false`, record the conflict, and emit `<promise>BLOCKED</promise>`.
 7. **Frontend acceptance ⇒ deterministic e2e spec.** For every batch task with `kind:"frontend"`, write at least one e2e spec per acceptance criterion (using `runtime.frontend.browserAgent`, typically Playwright). Place specs alongside the project's existing e2e tests and list their paths under `e2e_specs[]` in the matching `qa-hints.json` entry, e.g. `{"task_id": "...", "tests_written": [...], "e2e_specs": ["apps/web-app/tests/e2e/login.spec.ts"], "needs_deeper_qa": [...]}`. Specs let QA validate frontend behavior deterministically instead of narrating a manual browser walk-through; manual checks become fallback for visual regressions only.
 
 ## Required validation before committing

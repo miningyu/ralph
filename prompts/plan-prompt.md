@@ -18,7 +18,7 @@ Each invocation refines exactly **one** unit from the backlog and exits.
 4. **Never delete completed tasks** (`build_pass:true` or `qa_pass:true`). Append new items; refine incomplete items in-place.
 5. **Follow `ralph-config.json` guardrails to the letter.**
 6. **Match the language of `tasks.raw.md`.** Detect the dominant natural language of `tasks.raw.md` (e.g., Korean vs. English) and write every natural-language field in `tasks.json` — `description`, `acceptance[]`, and any free-form notes — in that same language. If `tasks.raw.md` is in Korean, the task fields must be in Korean; if it is in English, write them in English. Field names, enum values, `scope`, `path`, file paths, identifiers, and code snippets stay verbatim. If `tasks.raw.md` is absent or empty, default to the language used by existing tasks in `tasks.json`; if both are empty, default to English.
-7. **Task specs are mutable only before plan completion.** While this phase is still refining the plan, you may edit task spec fields (`id`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`) only when the change is part of the selected planning mode. Every spec change must be explained in the one-line `plan-progress.txt` entry for the iteration. Once `ralph/.plan-complete` exists, build and QA phases must treat those fields as immutable.
+7. **Task specs are mutable only before plan completion.** While this phase is still refining the plan, you may edit task spec fields (`id`, `scope`, `path`, `description`, `acceptance`, `context`, `dependent_on`, `touches`) only when the change is part of the selected planning mode. Every spec change must be explained in the one-line `plan-progress.txt` entry for the iteration. Once `ralph/.plan-complete` exists, build and QA phases must treat those fields as immutable.
 
 ## What to do this iteration
 Choose exactly **one** of the following modes (in priority order). Planning is
@@ -40,6 +40,12 @@ one step.
 
   Use the scope analysis to expand the user's request into every atomic task the work actually requires — do not just echo the user's wording back. Each task's `description` and `acceptance[]` should trace back to specific bullets in the analysis (affected surface → task; decision → acceptance criterion).
 
+  For each task, also write an optional `context` field — a short prose paragraph that helps the builder understand why this task exists and what to watch for. Recommended template using markdown bold labels for skim-ability:
+
+  > `context: "**Why**: <user or system gap this task fills>. **Current**: <relevant existing code with file:line>. **Gotcha**: <non-obvious traps and applicable decisions>."`
+
+  Write context when the task (a) modifies/refactors existing code, (b) has non-obvious constraints from the scope analysis, (c) is bound by multiple decisions, or (d) spans several workspaces. Skip it for trivial new features where description + acceptance is self-explanatory.
+
   Emit as many tasks as the work demands — **there is no upper bound**.
   Calibration ranges (use as guidance, not as caps):
 
@@ -58,7 +64,7 @@ one step.
 
   Pick the first violator. Either split into multiple atomic tasks (preserve the original id on the largest piece; assign fresh ids to the new pieces) or merge two tasks into one (drop the duplicate id). Update every `dependent_on` reference that points at affected ids. Exit.
 
-- **MODE D — Field refinement:** No structural issues remain, but at least one task has a `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, or an unverified `scope`.
+- **MODE D — Field refinement:** No structural issues remain, but at least one task has a `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, an unverified `scope`, or a missing `context` when the task is a modification/refactor, has non-obvious constraints, or spans multiple workspaces.
   Pick the first such task. Read the relevant code under its `path`. Tighten the fields. Exit.
 
 - **MODE E — Coverage close-out (add one task per uncovered raw item):** No structural or field issues remain.

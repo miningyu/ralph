@@ -18,7 +18,7 @@
 14. **완료된 task를 절대 삭제하지 말 것** (`build_pass:true` 또는 `qa_pass:true`). 새 항목은 추가(append)하고, 미완료 항목은 in-place로 정제하세요.
 5. **`ralph-config.json`의 가드레일을 글자 그대로 따를 것.**
 6. **`tasks.raw.md`의 언어와 일치시킬 것.** `tasks.raw.md`의 주된 자연어(예: 한국어 vs 영어)를 감지하고, `tasks.json`의 모든 자연어 필드 — `description`, `acceptance[]`, 자유 형식 노트 — 를 동일한 언어로 작성하세요. `tasks.raw.md`가 한국어면 task 필드도 한국어, 영어면 영어로 작성합니다. 필드명, enum 값, `scope`, `path`, 파일 경로, 식별자, 코드 스니펫은 그대로 유지합니다. `tasks.raw.md`가 없거나 비어 있으면 `tasks.json`의 기존 task가 사용하는 언어를 따르고, 둘 다 비어 있으면 영어를 기본값으로 합니다.
-7. **Task 스펙은 plan 완료 전에만 변경 가능합니다.** 이 phase가 plan을 정제하는 동안에는, 선택된 planning 모드의 일부일 때에만 task 스펙 필드(`id`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`)를 편집할 수 있습니다. 모든 스펙 변경은 해당 반복(iteration)의 한 줄짜리 `plan-progress.txt` 항목에서 설명되어야 합니다. `ralph/.plan-complete`가 일단 존재하면, build와 QA phase는 그 필드들을 불변(immutable)으로 취급해야 합니다.
+7. **Task 스펙은 plan 완료 전에만 변경 가능합니다.** 이 phase가 plan을 정제하는 동안에는, 선택된 planning 모드의 일부일 때에만 task 스펙 필드(`id`, `scope`, `path`, `description`, `acceptance`, `context`, `dependent_on`, `touches`)를 편집할 수 있습니다. 모든 스펙 변경은 해당 반복(iteration)의 한 줄짜리 `plan-progress.txt` 항목에서 설명되어야 합니다. `ralph/.plan-complete`가 일단 존재하면, build와 QA phase는 그 필드들을 불변(immutable)으로 취급해야 합니다.
 
 ## 이번 반복(iteration)에서 할 일
 다음 모드 중 정확히 **하나**를 선택하세요(우선순위 순). Planning은
@@ -40,6 +40,12 @@
 
   scope analysis를 사용해 사용자의 요청을 작업이 실제로 필요로 하는 모든 원자적 task로 확장하세요 — 사용자의 표현을 그대로 되풀이하지 마세요. 각 task의 `description`과 `acceptance[]`는 분석의 특정 항목으로 거슬러 올라갈 수 있어야 합니다 (영향 표면 → task; 결정 → acceptance criterion).
 
+  각 task에 선택적으로 `context` 필드를 작성하세요 — builder가 왜 이 task가 존재하고 무엇에 주의해야 할지 이해하도록 돕는 짧은 산문입니다. 권장 템플릿 (스캔 가능성을 위해 마크다운 bold 라벨 사용):
+
+  > `context: "**Why**: <이 task가 메우는 사용자/시스템 갭>. **Current**: <관련된 기존 코드와 file:line>. **Gotcha**: <비명시적 함정과 적용되는 결정사항>."`
+
+  context는 task가 (a) 기존 코드를 수정/리팩터하거나, (b) scope analysis에서 비명시적 제약이 드러나거나, (c) 여러 결정사항이 적용되거나, (d) 여러 workspace를 건드릴 때 작성하세요. description + acceptance가 자명한 trivial 신규 기능에서는 생략하세요.
+
   작업이 요구하는 만큼 task를 발행하세요 — **상한 없음**.
   보정 범위(상한이 아니라 가이드로 사용):
 
@@ -58,7 +64,7 @@
 
   첫 번째 위반자를 선택하세요. 여러 원자적 task로 분할하거나(가장 큰 조각에 원래 id 보존; 새 조각에는 새 id 할당), 두 task를 하나로 병합하세요(중복 id 제거). 영향 받은 id를 가리키는 모든 `dependent_on` 참조를 업데이트하세요. 종료.
 
-- **MODE D — 필드 정제:** 구조적 이슈가 남아있지 않지만 적어도 하나의 task가 `description`이 40자 미만이거나, `acceptance`가 누락되었거나, `dependent_on`이 누락되었거나, `scope`가 미검증인 경우.
+- **MODE D — 필드 정제:** 구조적 이슈가 남아있지 않지만 적어도 하나의 task가 `description`이 40자 미만이거나, `acceptance`가 누락되었거나, `dependent_on`이 누락되었거나, `scope`가 미검증이거나, task가 수정/리팩터/비명시적 제약/여러 workspace에 해당하는데 `context`가 누락된 경우.
   그런 첫 번째 task를 선택하세요. 그 task의 `path` 아래 관련 코드를 읽으세요. 필드를 조이세요(tighten). 종료.
 
 - **MODE E — 커버리지 마무리 (커버되지 않은 raw 항목당 하나의 task 추가):** 구조적 또는 필드 이슈가 남아있지 않은 경우.

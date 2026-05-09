@@ -14,8 +14,7 @@ You did **not** build this code. Your role is to validate against acceptance cri
 You can also read from disk: `ralph-config.json` (example: `templates/ralph-config.example.json`), `ralph/tasks.json` (example: `templates/tasks.example.json`), `ralph/qa-report.json` (example: `examples/qa-report.json`), `ralph/qa-hints.json` (example: `examples/qa-hints.json`), and the full repository.
 
 ## Evaluation procedure
-1. **Read the acceptance criteria.** These are the pass/fail standard.
-   Do not reinterpret, weaken, or rewrite them to match the current implementation.
+1. **Read the acceptance criteria and `context` field.** Acceptance is the pass/fail standard — do not reinterpret, weaken, or rewrite to match the current implementation. Context (if present) gives Why / Current / Gotcha and helps you judge whether the implementation addressed the right problem; it is informational, not a pass criterion.
 2. **Read the diff for this task:** run `git log --oneline -- <path>`, then `git show` the most recent commit that touched the task's `path`. Understand what actually changed.
 3. **Static review:** look for missing input validation, swallowed errors, input mutation, broken types, and public API drift in `workspaces.packages[]` shared libraries not propagated to consumers in `touches[]`.
 4. **Use the deterministic validation results.** The orchestrator already ran `commands.lint/typecheck/test/testE2E` for the task scope and listed outcomes under `== DETERMINISTIC VALIDATION ==`. Re-run a command **only** if (a) the block shows it FAIL and you applied a fix, or (b) the block shows it skipped and you believe it should have run. Cached PASS lines are authoritative — do not re-execute them.
@@ -55,7 +54,7 @@ Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entr
 2. **Never set `qa_pass:true` for task-caused validation failures.** Re-run after fixing; if still failing because of this task, mark `fail`. If a non-zero command is an unrelated documented baseline failure, record the baseline comparison and changed-file check.
 3. Follow `ralph-config.json.guardrails`.
 4. Do not delete or rewrite previous entries in `qa-report.json`. Append-only.
-5. **Never modify task spec fields in QA.** `id`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, and `touches` are immutable after plan completion. QA may update only `qa_pass`, `qa_status`, and `qa_blocked_reason` in `tasks.json`, plus append `qa-report.json`. If you changed a spec field during this run, the QA result is invalid: revert that spec edit, leave `qa_pass:false`, and do not mark the task as pass.
+5. **Never modify task spec fields in QA.** `id`, `scope`, `path`, `description`, `acceptance`, `context`, `dependent_on`, and `touches` are immutable after plan completion. QA may update only `qa_pass`, `qa_status`, and `qa_blocked_reason` in `tasks.json`, plus append `qa-report.json`. If you changed a spec field during this run, the QA result is invalid: revert that spec edit, leave `qa_pass:false`, and do not mark the task as pass.
 6. `task_spec_key` is an audit snapshot of the runtime task spec. Do not use it as authority to redefine, relax, or overwrite the task's acceptance criteria.
 7. **Trust the deterministic validation block.** Do not claim `qa_pass:true` if any line in `== DETERMINISTIC VALIDATION ==` shows FAIL and you have not applied a fix that changes the implicated files. The orchestrator re-runs validation after this iteration and will overwrite `qa_pass:true` to `false` (with an extra commit) if it stays red — fabricating a pass only wastes a retry slot.
 
