@@ -11,7 +11,7 @@
 - `== QA HISTORY FOR THIS FEATURE ==` — 이 task id의 모든 이전 시도 (주의 깊게 읽으세요 — 이전 시도가 실패했다면 *다른 각도*에서 시도하세요)
 - `== DETERMINISTIC VALIDATION ==` — 오케스트레이터가 task scope에 대해 `commands.lint/typecheck/test/testE2E`를 사전 실행했습니다. 결과(PASS / PASS (cached) / FAIL with log tail)가 거기에 나열되어 있습니다. **이 블록을 신뢰하세요** — 오케스트레이터는 이 반복 후 검증을 재실행하고 결과가 여전히 빨간색이면 `qa_pass:true`를 `false`로 덮어씁니다. 블록이 이미 PASS로 표시한 명령어를 재실행하지 마세요.
 
-디스크에서도 읽을 수 있습니다: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-report.json`, `ralph/qa-hints.json`, 그리고 전체 저장소.
+디스크에서도 읽을 수 있습니다: `ralph-config.json` (예시: `templates/ralph-config.example.json`), `ralph/tasks.json` (예시: `templates/tasks.example.json`), `ralph/qa-report.json` (예시: `examples/qa-report.json`), `ralph/qa-hints.json` (예시: `examples/qa-hints.json`), 그리고 전체 저장소.
 
 ## 평가 절차
 1. **Acceptance criteria를 읽으세요.** 이것이 통과/실패의 기준입니다.

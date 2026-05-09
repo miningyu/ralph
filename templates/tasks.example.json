@@ -4,11 +4,11 @@
     "scope": "@your-org/auth",
     "path": "packages/auth",
     "kind": "library",
-    "description": "Add refresh-token rotation helper that invalidates the old token on use",
+    "description": "사용 시 기존 토큰을 무효화하는 refresh-token 회전(rotation) 헬퍼 추가",
     "acceptance": [
-      "rotateRefreshToken(oldToken) returns a new token and marks oldToken as revoked",
-      "Reusing a revoked token throws RevokedTokenError",
-      "Unit tests cover happy path, revoked replay, and expired token"
+      "rotateRefreshToken(oldToken)이 새 토큰을 반환하고 oldToken을 폐기됨으로 표시한다",
+      "폐기된 토큰을 재사용하면 RevokedTokenError를 던진다",
+      "유닛 테스트가 정상 경로, 폐기된 토큰 재사용, 만료된 토큰을 모두 커버한다"
     ],
     "dependent_on": [],
     "touches": ["@your-org/auth"],
@@ -20,11 +20,11 @@
     "scope": "api-service",
     "path": "apps/api-service",
     "kind": "backend",
-    "description": "Wire @your-org/auth refresh-token rotation into POST /auth/refresh",
+    "description": "@your-org/auth의 refresh-token 회전을 POST /auth/refresh에 연결",
     "acceptance": [
-      "POST /auth/refresh returns 200 with a new {access, refresh} pair",
-      "Replaying an old refresh token returns 401 with code=TOKEN_REVOKED",
-      "Existing e2e auth suite still passes"
+      "POST /auth/refresh가 새 {access, refresh} 쌍과 함께 200을 반환한다",
+      "기존 refresh 토큰을 재사용하면 code=TOKEN_REVOKED와 함께 401을 반환한다",
+      "기존 e2e 인증 스위트가 여전히 통과한다"
     ],
     "dependent_on": ["LIB-001"],
     "touches": ["api-service", "@your-org/auth"],
@@ -36,11 +36,11 @@
     "scope": "web-app",
     "path": "apps/web-app",
     "kind": "frontend",
-    "description": "Show 'Session expired - please sign in again' toast when /auth/refresh returns TOKEN_REVOKED",
+    "description": "/auth/refresh가 TOKEN_REVOKED를 반환할 때 '세션이 만료되었습니다 - 다시 로그인해주세요' 토스트 표시",
     "acceptance": [
-      "On 401 TOKEN_REVOKED, the auth store clears and a toast appears",
-      "User is redirected to /login after the toast",
-      "Manual smoke via dev server confirms the flow"
+      "401 TOKEN_REVOKED 발생 시 auth store가 클리어되고 토스트가 표시된다",
+      "토스트 표시 후 사용자가 /login으로 리디렉트된다",
+      "dev 서버를 통한 수동 스모크로 전체 흐름을 확인한다"
     ],
     "dependent_on": ["API-014"],
     "touches": ["web-app"],

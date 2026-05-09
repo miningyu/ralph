@@ -5,10 +5,10 @@
 한 번 호출될 때마다 백로그에서 정확히 **하나**의 작업 단위(unit)만 정제하고 종료합니다.
 
 ## 사용 가능한 입력
-- `ralph-config.json` — 프로젝트 구조, 허용된 scope, 명령어 템플릿, 가드레일
+- `ralph-config.json` — 프로젝트 구조, 허용된 scope, 명령어 템플릿, 가드레일 (예시: `templates/ralph-config.example.json`)
 - `ralph/tasks.raw.md` (있는 경우) — 사용자가 작성한 자유 형식 요구사항
-- `ralph/tasks.json` — 당신이 관리하는 구조화된 백로그 (첫 실행 시 `[]`일 수 있음)
-- `ralph/plan-progress.txt` — 매 반복마다 무엇을 했는지 기록하는 append-only 로그
+- `ralph/tasks.json` — 당신이 관리하는 구조화된 백로그 (첫 실행 시 `[]`일 수 있음) (예시: `templates/tasks.example.json`)
+- `ralph/plan-progress.txt` — 매 반복마다 무엇을 했는지 기록하는 append-only 로그 (예시: `examples/plan-progress.txt`)
 - 저장소 자체 — 모든 작업을 실제 코드에 근거하도록 직접 읽어볼 것
 
 ## 절대 규칙 (Hard rules)

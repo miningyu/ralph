@@ -1,0 +1,63 @@
+[
+  {
+    "task_id": "LIB-001",
+    "attempt": 1,
+    "task_spec_key": "LIB-001:a3f2c1",
+    "status": "pass",
+    "tested_steps": [
+      "acceptance 1: rotateRefreshToken 호출 → 새 토큰 반환 + 기존 토큰 RevokedTokenSet에 등록 확인",
+      "acceptance 2: 폐기된 토큰 재사용 → RevokedTokenError throw 확인",
+      "acceptance 3: 유닛 테스트 3건 모두 PASS (DETERMINISTIC VALIDATION 블록 참조)"
+    ],
+    "bugs_found": [],
+    "fix_description": ""
+  },
+  {
+    "task_id": "API-014",
+    "attempt": 1,
+    "task_spec_key": "API-014:b7e1d4",
+    "status": "fail",
+    "tested_steps": [
+      "acceptance 1: POST /auth/refresh → 200 + 새 토큰 쌍 확인",
+      "acceptance 2: 폐기된 refresh 토큰 재사용 → 응답이 500 (예상: 401 TOKEN_REVOKED)",
+      "acceptance 3: 기존 e2e 인증 스위트 1건 실패"
+    ],
+    "bugs_found": [
+      {
+        "severity": "high",
+        "description": "RevokedTokenError가 처리되지 않아 NestJS 기본 500 InternalServerError로 응답됨. exception filter 누락",
+        "file": "apps/api-service/src/auth/auth.controller.ts",
+        "steps_to_reproduce": "1) 정상 refresh로 새 토큰 획득 2) 기존 refresh 토큰으로 다시 POST /auth/refresh 3) 응답이 500인지 확인"
+      }
+    ],
+    "fix_description": "scope 외부(@your-org/auth)에 exception filter를 두는 것이 더 깔끔하지만 현재 task의 touches[]에 포함되어 있지 않아 직접 수정 보류. controller 레벨에서 try/catch로 임시 처리할 수도 있으나 근본 해결이 아니라고 판단하여 fail 처리."
+  },
+  {
+    "task_id": "API-014",
+    "attempt": 2,
+    "task_spec_key": "API-014:b7e1d4",
+    "status": "pass",
+    "tested_steps": [
+      "acceptance 1: POST /auth/refresh → 200 + 새 토큰 쌍 확인",
+      "acceptance 2: 폐기된 refresh 토큰 재사용 → 401 + body.code === 'TOKEN_REVOKED' 확인",
+      "acceptance 3: 기존 e2e 인증 스위트 전체 PASS"
+    ],
+    "bugs_found": [],
+    "fix_description": "RevokedTokenError를 401 + TOKEN_REVOKED 코드로 매핑하는 exception filter를 apps/api-service/src/auth/filters/revoked-token.filter.ts에 추가. AuthModule providers에 등록."
+  },
+  {
+    "task_id": "WEB-007",
+    "attempt": 1,
+    "task_spec_key": "WEB-007:c9a2e8",
+    "status": "partial",
+    "tested_steps": [
+      "acceptance 1: 401 TOKEN_REVOKED 발생 시 auth store 클리어 - playwright spec 통과",
+      "acceptance 2: /login 리디렉트 - playwright spec 통과",
+      "acceptance 3: 수동 스모크 - 브라우저 에이전트 미가용으로 검증 불가"
+    ],
+    "bugs_found": [],
+    "fix_description": "",
+    "qa_status": "infra_blocked",
+    "qa_blocked_reason": "runtime.frontend.browserAgent (playwright) MCP 서버가 현재 환경에서 응답하지 않음. e2e spec은 통과했으나 수동 시각 회귀 검증이 불가하여 partial로 기록."
+  }
+]

@@ -1,0 +1,39 @@
+## Scope analysis
+
+Affected surfaces:
+- packages/auth/src/refresh-token.ts — 신규 rotateRefreshToken 헬퍼가 들어갈 위치 (현재 파일 없음)
+- packages/auth/src/index.ts — 신규 헬퍼 export 추가
+- packages/auth/src/errors.ts — RevokedTokenError 클래스 추가
+- packages/auth/test/refresh-token.test.ts — 신규 유닛 테스트
+- apps/api-service/src/auth/auth.controller.ts — POST /auth/refresh 엔드포인트가 신규 헬퍼를 호출
+- apps/api-service/test/e2e/auth.e2e-spec.ts — TOKEN_REVOKED 회귀 케이스 추가
+- apps/web-app/src/lib/api/auth.ts — 401 TOKEN_REVOKED 응답 처리 위치
+- apps/web-app/src/lib/stores/auth.ts — 토큰 폐기 시 store 클리어
+- apps/web-app/src/lib/components/Toast.svelte — 세션 만료 토스트 컴포넌트 (이미 존재, 재사용)
+
+Decisions required:
+- 폐기된 토큰 저장소: in-memory Set으로 시작할지, Redis로 갈지? → in-memory로 시작 (LIB-001 범위 내), Redis 마이그레이션은 별도 task로 분리
+- TOKEN_REVOKED 응답 코드 형식: HTTP body의 `code` 필드로 통일할지, 헤더로 둘지? → body의 `code` 필드 (기존 에러 핸들러 패턴 따름)
+- web-app의 자동 로그아웃 시점: 토스트 표시 직후인지, 사용자가 토스트를 닫은 후인지? → 토스트 표시 후 3초 자동 리디렉트
+
+Risks / cross-cutting concerns:
+- @your-org/auth public API 변경 — api-service가 유일한 consumer, touches[]에 명시 필요
+- 기존 e2e 인증 스위트가 refresh 동작을 가정하고 있음 — 회귀 테스트로 보호
+- in-memory 폐기 저장소는 서버 재시작 시 초기화됨 — task description에 명시 (Redis 마이그레이션 후속 task)
+
+Atomic unit candidates:
+- LIB-001: rotateRefreshToken 헬퍼 + RevokedTokenError + 유닛 테스트
+- API-014: POST /auth/refresh 연결 + e2e 회귀 케이스
+- WEB-007: 401 TOKEN_REVOKED 토스트 + auth store 클리어 + /login 리디렉트
+
+iter 1: MODE A — scope analysis 작성, refresh-token 회전 작업의 영향 표면과 결정사항 기록
+iter 2: MODE B — bootstrap, 분석 기반으로 LIB-001/API-014/WEB-007 3개 task 생성
+iter 3: MODE D — LIB-001의 acceptance에 만료 토큰 케이스 추가 (description이 너무 짧았음)
+iter 4: MODE D — API-014의 dependent_on에 LIB-001 추가, touches[]에 @your-org/auth 추가
+iter 5: MODE E — coverage map 작성, 모든 raw 요구사항이 task로 매핑됨 확인
+iter 6: MODE F — plan 완료, .plan-complete 생성
+
+## Coverage map
+refresh 토큰 회전 헬퍼 → LIB-001
+POST /auth/refresh 연결 → API-014
+프론트엔드 세션 만료 UX → WEB-007

@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-05-09T08:42:17Z",
+  "phase": "final_validation",
+  "failed_scope": "@your-org/auth",
+  "failed_command_name": "typecheck",
+  "failed_command": "pnpm exec turbo run check --filter=@your-org/auth",
+  "exit_code": 2,
+  "log_path": "ralph/runtime-logs/final-typecheck-20260509-084215.log",
+  "log_tail": "packages/auth/src/index.ts(12,1): error TS2308: Module './errors' has no exported member 'RevokedTokenError'.\napps/api-service/src/auth/filters/revoked-token.filter.ts(4,10): error TS2724: '\"@your-org/auth\"' has no exported member named 'RevokedTokenError'.\n\n ELIFECYCLE  Command failed with exit code 2.\n@your-org/auth#check: ERROR: command finished with error: command (packages/auth) exited (2)\n\nTasks:    3 successful, 4 total\nFailed:    @your-org/auth#check\n Time:    8.421s "
+}

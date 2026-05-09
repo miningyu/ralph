@@ -1,0 +1,6 @@
+iter 1: LIB-001 [FRESH] — rotateRefreshToken + RevokedTokenError 구현, 유닛 테스트 3건 통과
+iter 2: API-014 [FRESH] — POST /auth/refresh가 신규 헬퍼 호출, e2e 회귀 케이스 추가
+iter 3: WEB-007 [FRESH] — 401 TOKEN_REVOKED 처리, 토스트 + 리디렉트 e2e spec 작성
+iter 4: API-014 [REBUILD] — qa-report에서 만료 토큰 응답이 500이라는 보고, RevokedTokenError를 401로 매핑하는 exception filter 추가
+iter 5: WEB-007 [REBUILD] — 토스트가 1회만 표시되도록 auth store에 debounce 추가 (qa-report attempt 2 피드백)
+iter 6: LIB-001,API-014 [FINAL_REBUILD] — 워치독 final validation에서 typecheck 실패, RevokedTokenError가 export되지 않은 것이 원인. index.ts에 추가 후 통과

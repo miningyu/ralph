@@ -56,7 +56,7 @@
     }
   },
   "guardrails": [
-    "Do not add new top-level workspaces; place new code under existing apps/* or packages/*",
-    "Do not introduce a second package manager"
+    "새로운 최상위 workspace를 추가하지 말 것; 새 코드는 기존 apps/* 또는 packages/* 아래에 배치할 것",
+    "두 번째 패키지 매니저를 도입하지 말 것"
   ]
 }

@@ -11,7 +11,7 @@ You did **not** build this code. Your role is to validate against acceptance cri
 - `== QA HISTORY FOR THIS FEATURE ==` — all previous attempts for this task id (read carefully — if previous attempts failed, try a *different angle*)
 - `== DETERMINISTIC VALIDATION ==` — orchestrator pre-ran `commands.lint/typecheck/test/testE2E` for the task scope. Results (PASS / PASS (cached) / FAIL with log tail) are listed there. **Trust this block** — the orchestrator will re-run validation after this iteration and override `qa_pass:true` to `false` if results are still red. Do not re-run a command that the block already shows as PASS.
 
-You can also read from disk: `ralph-config.json`, `ralph/tasks.json`, `ralph/qa-report.json`, `ralph/qa-hints.json`, and the full repository.
+You can also read from disk: `ralph-config.json` (example: `templates/ralph-config.example.json`), `ralph/tasks.json` (example: `templates/tasks.example.json`), `ralph/qa-report.json` (example: `examples/qa-report.json`), `ralph/qa-hints.json` (example: `examples/qa-hints.json`), and the full repository.
 
 ## Evaluation procedure
 1. **Read the acceptance criteria.** These are the pass/fail standard.

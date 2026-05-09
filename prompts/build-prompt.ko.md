@@ -5,11 +5,12 @@
 한 번 호출될 때마다 런타임 `TASK_BATCH` 섹션에 나열된 task 객체들을 완료하고 종료합니다. 오케스트레이터는 같은 `scope`를 가진 ready 상태 task들로 배치를 구성합니다.
 
 ## 사용 가능한 입력
-- `ralph-config.json` — 프로젝트 구조, 허용된 scope, 명령어 템플릿, 가드레일
-- `ralph/tasks.json` — Phase 1에서 정제된 백로그
-- `ralph/build-progress.txt` — 과거 반복의 append-only 로그
-- `ralph/qa-report.json` — Phase 3 평가자(evaluator) 출력 (첫 QA 패스 후에만 채워짐)
-- `ralph/qa-hints.json` — QA 평가자를 위한 빌더 노트 (append 가능)
+- `ralph-config.json` — 프로젝트 구조, 허용된 scope, 명령어 템플릿, 가드레일 (예시: `templates/ralph-config.example.json`)
+- `ralph/tasks.json` — Phase 1에서 정제된 백로그 (예시: `templates/tasks.example.json`)
+- `ralph/build-progress.txt` — 과거 반복의 append-only 로그 (예시: `examples/build-progress.txt`)
+- `ralph/qa-report.json` — Phase 3 평가자(evaluator) 출력 (첫 QA 패스 후에만 채워짐) (예시: `examples/qa-report.json`)
+- `ralph/qa-hints.json` — QA 평가자를 위한 빌더 노트 (append 가능) (예시: `examples/qa-hints.json`)
+- `ralph/build-failure-context.json` — FINAL_REBUILD 모드에서만 존재 (예시: `examples/build-failure-context.json`)
 
 ## 배치 선택
 

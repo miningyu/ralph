@@ -5,11 +5,12 @@ Read the project name, package manager, build tool, and project structure (singl
 Each invocation completes the task objects listed in the runtime `TASK_BATCH` section and exits. The orchestrator builds the batch from ready tasks with the same `scope`.
 
 ## Available inputs
-- `ralph-config.json` — project structure, allowed scopes, command templates, guardrails
-- `ralph/tasks.json` — the refined backlog from Phase 1
-- `ralph/build-progress.txt` — append-only log of past iterations
-- `ralph/qa-report.json` — Phase 3 evaluator output (populated only after the first QA pass)
-- `ralph/qa-hints.json` — builder notes for the QA evaluator (appendable)
+- `ralph-config.json` — project structure, allowed scopes, command templates, guardrails (example: `templates/ralph-config.example.json`)
+- `ralph/tasks.json` — the refined backlog from Phase 1 (example: `templates/tasks.example.json`)
+- `ralph/build-progress.txt` — append-only log of past iterations (example: `examples/build-progress.txt`)
+- `ralph/qa-report.json` — Phase 3 evaluator output (populated only after the first QA pass) (example: `examples/qa-report.json`)
+- `ralph/qa-hints.json` — builder notes for the QA evaluator (appendable) (example: `examples/qa-hints.json`)
+- `ralph/build-failure-context.json` — only present in FINAL_REBUILD mode (example: `examples/build-failure-context.json`)
 
 ## Selecting the batch
 

@@ -5,10 +5,10 @@ Read the project name, package manager, build tool, and project structure (singl
 Each invocation refines exactly **one** unit from the backlog and exits.
 
 ## Available inputs
-- `ralph-config.json` — project structure, allowed scopes, command templates, guardrails
+- `ralph-config.json` — project structure, allowed scopes, command templates, guardrails (example: `templates/ralph-config.example.json`)
 - `ralph/tasks.raw.md` (if present) — free-form requirements written by the user
-- `ralph/tasks.json` — the structured backlog you maintain (may be `[]` on first run)
-- `ralph/plan-progress.txt` — append-only log of what each iteration did
+- `ralph/tasks.json` — the structured backlog you maintain (may be `[]` on first run) (example: `templates/tasks.example.json`)
+- `ralph/plan-progress.txt` — append-only log of what each iteration did (example: `examples/plan-progress.txt`)
 - The repository itself — read it directly so every task is grounded in real code
 
 ## Hard rules

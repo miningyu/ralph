@@ -1,0 +1,36 @@
+[
+  {
+    "task_id": "LIB-001",
+    "tests_written": [
+      "packages/auth/test/refresh-token.test.ts: rotateRefreshToken happy path",
+      "packages/auth/test/refresh-token.test.ts: 폐기된 토큰 재사용 → RevokedTokenError",
+      "packages/auth/test/refresh-token.test.ts: 만료된 토큰 → ExpiredTokenError"
+    ],
+    "needs_deeper_qa": [
+      "동시성: 같은 토큰을 두 요청이 동시에 회전시키려 할 때의 race condition은 유닛 테스트로 커버하지 못함. 부하 테스트가 필요하나 현재 task 범위 밖."
+    ]
+  },
+  {
+    "task_id": "API-014",
+    "tests_written": [
+      "apps/api-service/test/e2e/auth.e2e-spec.ts: POST /auth/refresh 정상 흐름",
+      "apps/api-service/test/e2e/auth.e2e-spec.ts: 폐기된 refresh 토큰 → 401 TOKEN_REVOKED"
+    ],
+    "needs_deeper_qa": [
+      "토큰 회전이 여러 디바이스 동시 로그인 상황에서 의도대로 동작하는지 확인이 어려움. 별도 통합 테스트 task로 분리 추천."
+    ]
+  },
+  {
+    "task_id": "WEB-007",
+    "tests_written": [
+      "apps/web-app/tests/e2e/session-expired.spec.ts: 401 TOKEN_REVOKED 시 토스트 표시 + auth store 클리어",
+      "apps/web-app/tests/e2e/session-expired.spec.ts: 토스트 표시 후 3초 내 /login 리디렉트"
+    ],
+    "e2e_specs": [
+      "apps/web-app/tests/e2e/session-expired.spec.ts"
+    ],
+    "needs_deeper_qa": [
+      "토스트의 시각 디자인(색상, 애니메이션)은 spec으로 검증 불가. 브라우저 에이전트로 수동 시각 회귀 확인 필요."
+    ]
+  }
+]
