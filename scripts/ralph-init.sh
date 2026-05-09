@@ -37,10 +37,19 @@ ralph/runtime-logs/
 ralph/qa-artifacts/
 ralph/.qa-cache/
 ralph/.plan-complete
+ralph/.current-task-*.json
 .ralph-watchdog.lock
 ralph-watchdog-*.log
 IGNORE
   echo "Updated: .gitignore"
+fi
+
+# Untrack any ralph state files that were previously committed (before gitignore was set up).
+# Only ralph/ralph-config.json should be tracked.
+TRACKED_STATE=$(git ls-files ralph/ 2>/dev/null | grep -v '^ralph/ralph-config\.json$' || true)
+if [ -n "$TRACKED_STATE" ]; then
+  echo "$TRACKED_STATE" | xargs -I {} git rm --cached --quiet "{}" 2>/dev/null || true
+  echo "Untracked $(echo "$TRACKED_STATE" | wc -l | tr -d ' ') previously-tracked ralph state file(s) — commit this change manually if desired."
 fi
 
 echo ""

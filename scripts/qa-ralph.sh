@@ -242,9 +242,6 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   if [ "$BUNDLE" = "RETRY_EXHAUSTED" ]; then
     echo "QA retry limit exhausted for at least one task. Marking unresolved tasks as qa_status:blocked."
     mark_retry_exhausted
-    git add ralph/tasks.json ralph/qa-report.json 2>/dev/null || true
-    git commit -m "qa: block unresolved tasks after ${MAX_RETRIES} attempts" 2>/dev/null || true
-    git push 2>/dev/null || true
     break
   fi
 
@@ -268,9 +265,6 @@ for ((i=1; i<=$ITERATIONS; i++)); do
     echo "Task ${TASK_ID}: files in path∪touches unchanged since last green QA. Marking qa_pass:true (no LLM call)."
     mark_task_qa_pass "$TASK_ID"
     append_no_op_report "$TASK_ID" "$ATTEMPT" "$TASK_SPEC_KEY"
-    git add ralph/tasks.json ralph/qa-report.json 2>/dev/null || true
-    git commit -m "qa: ${TASK_ID} attempt ${ATTEMPT} — pass (no-op skip)" 2>/dev/null || true
-    git push 2>/dev/null || true
     rm -f "$TASK_FILE"
     continue
   fi
@@ -369,9 +363,6 @@ Then do the following:
         echo "Post-recheck: $TASK_ID validation FAILED after LLM run; forcing qa_pass:false."
         echo "$POST_VALIDATION" | sed 's/^/  /'
         mark_task_qa_fail "$TASK_ID"
-        git add ralph/tasks.json 2>/dev/null || true
-        git commit -m "qa: ${TASK_ID} attempt ${ATTEMPT} — recheck-failed (orchestrator override)" 2>/dev/null || true
-        git push 2>/dev/null || true
       fi
     fi
   fi

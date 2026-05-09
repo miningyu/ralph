@@ -210,16 +210,10 @@ run_final_runtime_smoke() {
 }
 
 cron_backup() {
-  local status meaningful
-  status=$(git status --porcelain ralph/ 2>/dev/null || true)
-  [ -n "$status" ] || return 0
-
-  meaningful=$(printf '%s\n' "$status" | awk '{print $2}' | grep -Ev '^ralph/(qa-report\.json|\.current-task-[0-9]+\.json)$' || true)
-  [ -n "$meaningful" ] || return 0
-
-  git add ralph/ 2>/dev/null || true
-  git commit -m "watchdog backup $(date '+%H:%M') — build $(count_passes)/$(total_tasks), qa $(qa_passed)/$(total_tasks)" 2>/dev/null || true
-  git push 2>/dev/null || true
+  # No-op: ralph state files are gitignored and persist on disk between iterations.
+  # Previously this committed "watchdog backup HH:MM" snapshots to the user's
+  # main branch, polluting history with bookkeeping noise. Removed.
+  return 0
 }
 
 START_TIME=$(date +%s)
