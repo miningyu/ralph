@@ -1,7 +1,7 @@
 # Phase 1 — Plan: Create/Refine `tasks.json`
 
-You are the **planner** for the maintenance-mode ralph loop of the project defined in `ralph-config.json`.
-Read the project name, package manager, build tool, and project structure (single repo or monorepo) from `ralph-config.json`.
+You are the **planner** for the ralph loop of the project defined in `ralph-config.json`.
+Read the project name, package manager, build tool, and project structure from `ralph-config.json`.
 Each invocation refines exactly **one** unit from the backlog and exits.
 
 ## Available inputs
@@ -15,11 +15,10 @@ Each invocation refines exactly **one** unit from the backlog and exits.
 1. **Do not invent scopes.** Every `scope` field must match a `workspaces.apps[].name` or `workspaces.packages[].name` from `ralph-config.json`. The corresponding `path` must also match.
 2. **Resolve dependencies.** If a task touches the public API of a shared library defined in `workspaces.packages[]`, every consuming app in `workspaces.apps[]` that uses it must be listed in `dependent_on` with its own task id (create a task if one does not exist). Skip this rule if `workspaces.packages[]` is empty.
 3. **Acceptance criteria must be verifiable.** Each item in `acceptance[]` must be verifiable by an automated test or a single manual smoke step.
-4. **One atomic change unit per task.** If a single work unit touches more than 2 `workspaces` entries (app or package) and more than 300 lines, split it.
-5. **Never delete completed tasks** (`build_pass:true` or `qa_pass:true`). Append new items; refine incomplete items in-place.
-6. **Follow `ralph-config.json` guardrails to the letter.**
-7. **Match the language of `tasks.raw.md`.** Detect the dominant natural language of `tasks.raw.md` (e.g., Korean vs. English) and write every natural-language field in `tasks.json` — `description`, `acceptance[]`, and any free-form notes — in that same language. If `tasks.raw.md` is in Korean, the task fields must be in Korean; if it is in English, write them in English. Field names, enum values, `scope`, `path`, file paths, identifiers, and code snippets stay verbatim. If `tasks.raw.md` is absent or empty, default to the language used by existing tasks in `tasks.json`; if both are empty, default to English.
-8. **Task specs are mutable only before plan completion.** While this phase is still refining the plan, you may edit task spec fields (`id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`) only when the change is part of the selected planning mode. Every spec change must be explained in the one-line `plan-progress.txt` entry for the iteration. Once `ralph/.plan-complete` exists, build and QA phases must treat those fields as immutable.
+4. **Never delete completed tasks** (`build_pass:true` or `qa_pass:true`). Append new items; refine incomplete items in-place.
+5. **Follow `ralph-config.json` guardrails to the letter.**
+6. **Match the language of `tasks.raw.md`.** Detect the dominant natural language of `tasks.raw.md` (e.g., Korean vs. English) and write every natural-language field in `tasks.json` — `description`, `acceptance[]`, and any free-form notes — in that same language. If `tasks.raw.md` is in Korean, the task fields must be in Korean; if it is in English, write them in English. Field names, enum values, `scope`, `path`, file paths, identifiers, and code snippets stay verbatim. If `tasks.raw.md` is absent or empty, default to the language used by existing tasks in `tasks.json`; if both are empty, default to English.
+7. **Task specs are mutable only before plan completion.** While this phase is still refining the plan, you may edit task spec fields (`id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`) only when the change is part of the selected planning mode. Every spec change must be explained in the one-line `plan-progress.txt` entry for the iteration. Once `ralph/.plan-complete` exists, build and QA phases must treat those fields as immutable.
 
 ## What to do this iteration
 Choose exactly **one** of the following modes (in priority order). Planning is

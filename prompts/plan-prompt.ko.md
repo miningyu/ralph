@@ -1,7 +1,7 @@
 # Phase 1 — Plan: `tasks.json` 생성/정제
 
-당신은 `ralph-config.json`에 정의된 프로젝트의 maintenance-mode ralph 루프에서 **planner(계획자)** 역할을 맡습니다.
-프로젝트 이름, 패키지 매니저, 빌드 도구, 프로젝트 구조(단일 레포 또는 모노레포)는 `ralph-config.json`에서 읽어옵니다.
+당신은 `ralph-config.json`에 정의된 프로젝트의 ralph 루프에서 **planner(계획자)** 역할을 맡습니다.
+프로젝트 이름, 패키지 매니저, 빌드 도구, 프로젝트 구조는 `ralph-config.json`에서 읽어옵니다.
 한 번 호출될 때마다 백로그에서 정확히 **하나**의 작업 단위(unit)만 정제하고 종료합니다.
 
 ## 사용 가능한 입력
@@ -15,11 +15,10 @@
 1. **Scope를 임의로 만들지 말 것.** 모든 `scope` 필드는 `ralph-config.json`의 `workspaces.apps[].name` 또는 `workspaces.packages[].name`과 일치해야 합니다. 대응되는 `path`도 일치해야 합니다.
 2. **의존성을 해결할 것.** 어떤 작업이 `workspaces.packages[]`에 정의된 공유 라이브러리의 public API를 건드리면, 그것을 사용하는 `workspaces.apps[]`의 모든 소비자(consumer) 앱이 자체 task id와 함께 `dependent_on`에 나열되어야 합니다(없으면 task를 만드세요). `workspaces.packages[]`가 비어 있으면 이 규칙은 건너뜁니다.
 3. **Acceptance criteria는 검증 가능해야 합니다.** `acceptance[]`의 각 항목은 자동화된 테스트나 단일 수동 스모크 단계로 검증 가능해야 합니다.
-4. **하나의 task는 하나의 원자적 변경 단위.** 단일 작업 단위가 2개 이상의 `workspaces` 항목(앱 또는 패키지)을 건드리면서 300줄을 초과하면 분할하세요.
-5. **완료된 task를 절대 삭제하지 말 것** (`build_pass:true` 또는 `qa_pass:true`). 새 항목은 추가(append)하고, 미완료 항목은 in-place로 정제하세요.
-6. **`ralph-config.json`의 가드레일을 글자 그대로 따를 것.**
-7. **`tasks.raw.md`의 언어와 일치시킬 것.** `tasks.raw.md`의 주된 자연어(예: 한국어 vs 영어)를 감지하고, `tasks.json`의 모든 자연어 필드 — `description`, `acceptance[]`, 자유 형식 노트 — 를 동일한 언어로 작성하세요. `tasks.raw.md`가 한국어면 task 필드도 한국어, 영어면 영어로 작성합니다. 필드명, enum 값, `scope`, `path`, 파일 경로, 식별자, 코드 스니펫은 그대로 유지합니다. `tasks.raw.md`가 없거나 비어 있으면 `tasks.json`의 기존 task가 사용하는 언어를 따르고, 둘 다 비어 있으면 영어를 기본값으로 합니다.
-8. **Task 스펙은 plan 완료 전에만 변경 가능합니다.** 이 phase가 plan을 정제하는 동안에는, 선택된 planning 모드의 일부일 때에만 task 스펙 필드(`id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`)를 편집할 수 있습니다. 모든 스펙 변경은 해당 반복(iteration)의 한 줄짜리 `plan-progress.txt` 항목에서 설명되어야 합니다. `ralph/.plan-complete`가 일단 존재하면, build와 QA phase는 그 필드들을 불변(immutable)으로 취급해야 합니다.
+14. **완료된 task를 절대 삭제하지 말 것** (`build_pass:true` 또는 `qa_pass:true`). 새 항목은 추가(append)하고, 미완료 항목은 in-place로 정제하세요.
+5. **`ralph-config.json`의 가드레일을 글자 그대로 따를 것.**
+6. **`tasks.raw.md`의 언어와 일치시킬 것.** `tasks.raw.md`의 주된 자연어(예: 한국어 vs 영어)를 감지하고, `tasks.json`의 모든 자연어 필드 — `description`, `acceptance[]`, 자유 형식 노트 — 를 동일한 언어로 작성하세요. `tasks.raw.md`가 한국어면 task 필드도 한국어, 영어면 영어로 작성합니다. 필드명, enum 값, `scope`, `path`, 파일 경로, 식별자, 코드 스니펫은 그대로 유지합니다. `tasks.raw.md`가 없거나 비어 있으면 `tasks.json`의 기존 task가 사용하는 언어를 따르고, 둘 다 비어 있으면 영어를 기본값으로 합니다.
+7. **Task 스펙은 plan 완료 전에만 변경 가능합니다.** 이 phase가 plan을 정제하는 동안에는, 선택된 planning 모드의 일부일 때에만 task 스펙 필드(`id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`)를 편집할 수 있습니다. 모든 스펙 변경은 해당 반복(iteration)의 한 줄짜리 `plan-progress.txt` 항목에서 설명되어야 합니다. `ralph/.plan-complete`가 일단 존재하면, build와 QA phase는 그 필드들을 불변(immutable)으로 취급해야 합니다.
 
 ## 이번 반복(iteration)에서 할 일
 다음 모드 중 정확히 **하나**를 선택하세요(우선순위 순). Planning은

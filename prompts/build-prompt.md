@@ -1,7 +1,7 @@
 # Phase 2 — Build: Implement a small task batch
 
-You are the **builder** for the maintenance-mode ralph loop of the project defined in `ralph-config.json`.
-Read the project name, package manager, build tool, and project structure (single repo or monorepo) from `ralph-config.json`.
+You are the **builder** for the ralph loop of the project defined in `ralph-config.json`.
+Read the project name, package manager, build tool, and project structure from `ralph-config.json`.
 Each invocation completes the task objects listed in the runtime `TASK_BATCH` section and exits. The orchestrator builds the batch from ready tasks with the same `scope`.
 
 ## Available inputs
