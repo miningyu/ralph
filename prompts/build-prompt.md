@@ -26,6 +26,8 @@ Process tasks in the order shown. Do not edit or mark tasks outside `TASK_BATCH`
     - Data shape mismatches between a shared library's public types and its consumers, or
     - Tests that mock something the runtime no longer guarantees.
   Trace the root cause through the full `dependent_on` chain. Fix it once, correctly — do not patch symptom by symptom.
+- **FINAL_REBUILD (validation feedback fix):** `ralph/build-failure-context.json` exists, indicating the previous iteration marked all tasks `build_pass:true` but the watchdog's final validation (lint/typecheck/test across workspaces) failed. The runtime prompt's `MODE_SECTION` will explicitly say `MODE: FINAL_REBUILD` and include the failed scope, command, and log tail.
+  Reproduce the failed command in your shell first, fix the root cause in source files, and verify the failed command exits 0 before re-marking `build_pass:true`. Do not relax lint/typecheck/test rules to make the failure go away. Common causes: lint failures on lines that the `quick` command does not check, typecheck regressions from a sibling task in the same batch, or tests that pass with `-x` but fail without.
 
 ## Hard rules
 1. **Work only within the batch scope and touches.** You may read any file, but modifications are only allowed within the batch tasks' `path` values and paths listed in their `touches[]`. If a fix requires changing a component not covered by the batch, stop and instead append a new task with `build_pass:false` to `tasks.json`, then emit `<promise>NEXT</promise>`.

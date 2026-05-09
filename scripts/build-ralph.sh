@@ -136,6 +136,20 @@ get_qa_context() {
   ' 2>/dev/null || echo ""
 }
 
+get_build_failure_context() {
+  [ -f ralph/build-failure-context.json ] || { echo ""; return; }
+  jq -r '
+    "=== FINAL VALIDATION FAILURE CONTEXT ===\n" +
+    "Timestamp: " + (.timestamp // "unknown") + "\n" +
+    "Phase: " + (.phase // "unknown") + "\n" +
+    "Failed scope: " + (.failed_scope // "(unattributable — repo-wide command)") + "\n" +
+    "Failed command: " + (.failed_command_name // "?") + " — " + (.failed_command // "?") + "\n" +
+    "Exit code: " + ((.exit_code // 0) | tostring) + "\n" +
+    "Log path: " + (.log_path // "") + "\n" +
+    "Log tail (last 80 lines):\n" + (.log_tail // "")
+  ' ralph/build-failure-context.json 2>/dev/null || echo ""
+}
+
 get_downstream_context() {
   local batch_json="$1"
   jq -rn --argjson batch "$batch_json" --slurpfile tasks ralph/tasks.json '
@@ -180,10 +194,27 @@ for ((i=1; i<=$ITERATIONS; i++)); do
   BATCH_SCOPE=$(printf '%s' "$TASK_BATCH" | jq -r '.[0].scope // "unknown"')
   DOWNSTREAM_CONTEXT=$(get_downstream_context "$TASK_BATCH")
   QA_CONTEXT=$(get_qa_context "$TASK_BATCH")
+  BUILD_FAILURE_CONTEXT=$(get_build_failure_context)
 
   echo "  -> Task batch: $BATCH_COUNT task(s), scope=$BATCH_SCOPE"
 
-  if [ -n "$QA_CONTEXT" ]; then
+  if [ -n "$BUILD_FAILURE_CONTEXT" ]; then
+    echo "  -> Final-rebuild mode: previous final validation failed, providing root-cause context"
+    MODE_SECTION="MODE: FINAL_REBUILD — The previous build cycle marked all tasks build_pass:true, but the watchdog's final validation (lint/typecheck/test across workspace scopes) FAILED. The failing scope's tasks have been reset to build_pass:false and require re-implementation. Read the failure context and fix the root cause before re-marking build_pass.
+
+$BUILD_FAILURE_CONTEXT
+
+$DOWNSTREAM_CONTEXT
+
+FINAL_REBUILD instructions:
+1. Read the failure context above — the failed command, scope, and log tail tell you exactly what broke.
+2. Reproduce locally — run the failed command in the project root and confirm you can see the same failure.
+3. Fix the root cause in the source files (not by relaxing the lint/typecheck/test rules).
+4. Re-run the failed command yourself before marking build_pass — it must exit 0.
+5. Also run the configured quick validation for the batch scope — it must exit 0.
+6. Set build_pass:true only for tasks in TASK_BATCH that are now genuinely passing, commit, push.
+7. Do NOT re-mark tasks build_pass:true without first verifying the failed command passes — that's what caused the previous reset."
+  elif [ -n "$QA_CONTEXT" ]; then
     echo "  -> Rebuild mode: QA failure detected, providing root-cause context"
     MODE_SECTION="MODE: REBUILD — One or more tasks in this batch failed previous QA. Read the failure context carefully.
 
@@ -206,8 +237,11 @@ REBUILD instructions:
 $DOWNSTREAM_CONTEXT"
   fi
 
+  BUILD_FAILURE_FILE_REF=""
+  [ -f ralph/build-failure-context.json ] && BUILD_FAILURE_FILE_REF=" @ralph/build-failure-context.json"
+
   result=$(timeout "$ITER_TIMEOUT" $BUILDER_CMD \
-"@${RALPH_INSTALL}/prompts/build-prompt.md @ralph/ralph-config.json @ralph/tasks.json @ralph/build-progress.txt @ralph/qa-report.json @ralph/qa-hints.json
+"@${RALPH_INSTALL}/prompts/build-prompt.md @ralph/ralph-config.json @ralph/tasks.json @ralph/build-progress.txt @ralph/qa-report.json @ralph/qa-hints.json${BUILD_FAILURE_FILE_REF}
 
 ITERATION: $i of $ITERATIONS
 PROGRESS: $PASSES/$TOTAL tasks build_pass

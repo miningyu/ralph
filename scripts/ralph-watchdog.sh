@@ -59,6 +59,78 @@ reset_pass_flags() {
   ' ralph/tasks.json > ralph/tasks.json.tmp && mv ralph/tasks.json.tmp ralph/tasks.json
 }
 
+# Reset build_pass only for tasks whose .scope matches $1.
+# Used when final-validation failure can be attributed to a specific scope.
+reset_pass_flags_for_scope() {
+  local scope="$1"
+  [ -n "$scope" ] || { reset_pass_flags; return; }
+  jq --arg s "$scope" '
+    map(if .scope == $s then .build_pass = false | .qa_pass = false else . end)
+  ' ralph/tasks.json > ralph/tasks.json.tmp && mv ralph/tasks.json.tmp ralph/tasks.json
+}
+
+# Reset build_pass only for tasks listed in the most recent build-progress.txt
+# entry. Used when failure cannot be attributed to a single scope (e.g. a
+# repo-wide lint command without {scope} substitution).
+reset_pass_flags_for_last_batch() {
+  local last_ids
+  last_ids=$(awk -F'[: ,]' '
+    /^iter [0-9]+:/ {
+      ids = $0
+      sub(/^iter [0-9]+: */, "", ids)
+      sub(/ +\[.*$/, "", ids)
+      sub(/ +—.*$/, "", ids)
+      gsub(/ /, "", ids)
+      last = ids
+    }
+    END { if (last) print last }
+  ' ralph/build-progress.txt 2>/dev/null)
+  if [ -z "$last_ids" ]; then
+    reset_pass_flags
+    return
+  fi
+  jq --arg ids "$last_ids" '
+    ($ids | split(",")) as $reset_ids
+    | map(if (.id as $id | $reset_ids | index($id)) then
+            .build_pass = false | .qa_pass = false
+          else . end)
+  ' ralph/tasks.json > ralph/tasks.json.tmp && mv ralph/tasks.json.tmp ralph/tasks.json
+}
+
+# Write structured failure context that the next build-ralph.sh iteration
+# will surface to the builder agent. Replaces the previous behavior where
+# final-validation failures silently reset all flags with no signal.
+write_build_failure_context() {
+  local scope="$1" cmd_name="$2" cmd="$3" log_file="$4" exit_code="$5"
+  local log_tail=""
+  [ -f "$log_file" ] && log_tail=$(tail -n 80 "$log_file" 2>/dev/null || true)
+  local timestamp
+  timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+  jq -n \
+    --arg ts "$timestamp" \
+    --arg scope "$scope" \
+    --arg name "$cmd_name" \
+    --arg cmd "$cmd" \
+    --arg log "$log_tail" \
+    --arg path "$log_file" \
+    --argjson code "$exit_code" '
+    {
+      timestamp: $ts,
+      phase: "final_validation",
+      failed_scope: $scope,
+      failed_command_name: $name,
+      failed_command: $cmd,
+      exit_code: $code,
+      log_path: $path,
+      log_tail: $log
+    }
+  ' > ralph/build-failure-context.json
+}
+
+clear_build_failure_context() {
+  rm -f ralph/build-failure-context.json
+}
+
 run_scoped_command() {
   local label="$1"
   local template="$2"
@@ -69,6 +141,14 @@ run_scoped_command() {
   log "Phase 2: final $label for $scope: $command"
   bash -lc "$command" >> "$LOG_FILE" 2>&1
 }
+
+# Globals populated by warm_qa_cache_for_scope on failure so callers can
+# attribute a specific scope/command/log to the most recent failure.
+LAST_FAILED_SCOPE=""
+LAST_FAILED_CMD_NAME=""
+LAST_FAILED_CMD=""
+LAST_FAILED_LOG=""
+LAST_FAILED_EXIT=0
 
 # Run lint/typecheck/test individually for a scope and write each result into
 # the QA cache so per-task QA can skip an LLM invocation on cached pass.
@@ -94,15 +174,25 @@ warm_qa_cache_for_scope() {
     if [ "$exit_code" -ne 0 ]; then
       log "Phase 2 gate: ${scope}.${name} FAILED (exit=${exit_code}). See $log_file"
       tail -n 40 "$log_file" | sed 's/^/    /' | tee -a "$LOG_FILE" >/dev/null
+      LAST_FAILED_SCOPE="$scope"
+      LAST_FAILED_CMD_NAME="$name"
+      LAST_FAILED_CMD="$cmd"
+      LAST_FAILED_LOG="$log_file"
+      LAST_FAILED_EXIT="$exit_code"
       return 1
     fi
     log "Phase 2 gate: ${scope}.${name} PASS"
   done
 }
 
-# Iterate over the union of every task's scope and touches[]. Run individual
+# Iterate over the distinct .scope values from tasks.json. Run individual
 # commands.lint/typecheck/test per workspace and cache them. Fall back to
 # commands.final (legacy) only when none of the individual commands are set.
+#
+# Note: touches[] (file paths like .env.example, README.md) are intentionally
+# excluded from this iteration. They are not workspaces, lint commands have no
+# {scope} substitution against them, and a file-path "scope" only causes
+# the same repo-wide command to run multiple times until it hits a real error.
 run_final_validation() {
   local has_individual=0
   for c in lint typecheck test; do
@@ -130,17 +220,22 @@ run_final_validation() {
     elif [ -n "$final_template" ]; then
       if ! run_scoped_command "validation" "$final_template" "$scope"; then
         log "Phase 2: final validation failed for $scope."
+        LAST_FAILED_SCOPE="$scope"
+        LAST_FAILED_CMD_NAME="final"
+        LAST_FAILED_CMD="${final_template//\{scope\}/$scope}"
+        LAST_FAILED_LOG="$LOG_FILE"
+        LAST_FAILED_EXIT=1
         return 1
       fi
     fi
   done < <(jq -r '
-    [.[] | (.scope // empty), (.touches // [] | .[])]
+    [.[] | .scope // empty]
     | map(select(. != null and . != ""))
     | unique
     | .[]
   ' ralph/tasks.json)
 
-  log "Phase 2: final validation passed (scope ∪ touches[] union)."
+  log "Phase 2: final validation passed."
 }
 
 http_responsive() {
@@ -262,14 +357,27 @@ for ((cycle=1; cycle<=MAX_CYCLES; cycle++)); do
     if all_built; then
       log "Phase 2: all $(total_tasks) tasks build_pass."
       if ! run_final_validation; then
-        log "Phase 2: final validation failed. Resetting pass flags and returning to build."
-        reset_pass_flags
+        write_build_failure_context \
+          "$LAST_FAILED_SCOPE" "$LAST_FAILED_CMD_NAME" "$LAST_FAILED_CMD" \
+          "$LAST_FAILED_LOG" "$LAST_FAILED_EXIT"
+        local matching_tasks
+        matching_tasks=$(jq -r --arg s "$LAST_FAILED_SCOPE" '
+          [.[] | select(.scope == $s and .build_pass == true)] | length
+        ' ralph/tasks.json 2>/dev/null || echo 0)
+        if [ -n "$LAST_FAILED_SCOPE" ] && [ "$matching_tasks" -gt 0 ]; then
+          log "Phase 2: final validation failed at scope=$LAST_FAILED_SCOPE. Resetting $matching_tasks task(s) in that scope and returning to build with failure context."
+          reset_pass_flags_for_scope "$LAST_FAILED_SCOPE"
+        else
+          log "Phase 2: final validation failed (no matching scope). Resetting last build batch only and returning to build with failure context."
+          reset_pass_flags_for_last_batch
+        fi
         cron_backup
         continue
       fi
+      clear_build_failure_context
       if ! run_final_runtime_smoke; then
-        log "Phase 2: final runtime smoke failed. Resetting pass flags and returning to build."
-        reset_pass_flags
+        log "Phase 2: final runtime smoke failed. Resetting last build batch and returning to build."
+        reset_pass_flags_for_last_batch
         cron_backup
         continue
       fi
