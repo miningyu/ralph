@@ -55,7 +55,7 @@
 2. **Task로 인한 검증 실패에 대해 절대 `qa_pass:true`를 설정하지 말 것.** 수정 후 재실행하세요; 이 task 때문에 여전히 실패하면 `fail`로 표시. 0이 아닌 명령어가 무관한 문서화된 베이스라인 실패라면 베이스라인 비교와 변경된 파일 체크를 기록하세요.
 3. `ralph-config.json.guardrails`를 따르세요.
 4. `qa-report.json`의 이전 항목을 삭제하거나 다시 쓰지 마세요. Append-only.
-5. **QA에서 task 스펙 필드를 절대 수정하지 말 것.** `id`, `priority`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`는 plan 완료 후 불변입니다. QA는 `tasks.json`의 `qa_pass`, `qa_status`, `qa_blocked_reason`만 업데이트할 수 있고, `qa-report.json`에 append할 수 있습니다. 이 실행 중에 스펙 필드를 변경했다면, QA 결과는 무효합니다: 그 스펙 편집을 되돌리고, `qa_pass:false`로 두고, task를 pass로 표시하지 마세요.
+5. **QA에서 task 스펙 필드를 절대 수정하지 말 것.** `id`, `scope`, `path`, `description`, `acceptance`, `dependent_on`, `touches`는 plan 완료 후 불변입니다. QA는 `tasks.json`의 `qa_pass`, `qa_status`, `qa_blocked_reason`만 업데이트할 수 있고, `qa-report.json`에 append할 수 있습니다. 이 실행 중에 스펙 필드를 변경했다면, QA 결과는 무효합니다: 그 스펙 편집을 되돌리고, `qa_pass:false`로 두고, task를 pass로 표시하지 마세요.
 6. `task_spec_key`는 런타임 task 스펙의 감사(audit) 스냅샷입니다. task의 acceptance criteria를 재정의, 완화, 또는 덮어쓰는 권한으로 사용하지 마세요.
 7. **결정론적 검증 블록을 신뢰하세요.** `== DETERMINISTIC VALIDATION ==`의 어떤 줄이라도 FAIL로 표시되어 있고 관련 파일을 변경하는 수정을 적용하지 않았다면 `qa_pass:true`를 주장하지 마세요. 오케스트레이터는 이 반복 후 검증을 재실행하고, 빨간색으로 남아있으면 `qa_pass:true`를 `false`로 (추가 커밋과 함께) 덮어씁니다 — pass를 조작하는 것은 재시도 슬롯만 낭비합니다.
 
