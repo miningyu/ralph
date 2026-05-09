@@ -122,7 +122,7 @@ If **even one** non-whitelisted ERROR line was added, do not set `build_pass:tru
 1. Set `build_pass: true` on every completed item in `TASK_BATCH`. Do not touch `qa_pass` or any immutable task spec field.
 2. (Optional) Append entries to `qa-hints.json`: `{ "task_id": "...", "tests_written": ["..."], "needs_deeper_qa": ["..."] }` — flag acceptance criteria that automated tests do **not** cover.
 3. Append a one-line summary to `build-progress.txt`: `iter <n>: <task_id>[,<task_id>...] [<mode>] — <short summary>`.
-4. Stage only the files you actually changed. Avoid `git add -A`, which may pull in unrelated reformatting.
+4. Stage only the source files you actually changed. Avoid `git add -A`, which may pull in unrelated reformatting. Do **not** stage anything under `ralph/` (`tasks.json`, `qa-hints.json`, `build-progress.txt`, etc. are gitignored and persist on disk between iterations).
 5. `git commit -m "<scope>: <task_id> — <short summary>"` then `git push`.
 6. Emit one of:
    - `<promise>NEXT</promise>` — batch complete, loop continues.

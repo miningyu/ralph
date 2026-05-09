@@ -60,7 +60,7 @@ Append a NEW entry to `ralph/qa-report.json` (do **not** overwrite previous entr
 7. **Trust the deterministic validation block.** Do not claim `qa_pass:true` if any line in `== DETERMINISTIC VALIDATION ==` shows FAIL and you have not applied a fix that changes the implicated files. The orchestrator re-runs validation after this iteration and will overwrite `qa_pass:true` to `false` (with an extra commit) if it stays red — fabricating a pass only wastes a retry slot.
 
 ## After recording
-1. Stage `ralph/` and the paths corresponding to the task's `path` and `touches[]` only for pass results, direct code fixes, or `qa_status` transitions such as `blocked`/`infra_blocked`.
-2. For fail-only or partial-only reports that do not change code or task status, do **not** commit. Leave the appended report on disk for the next build/QA iteration.
-3. If committing, use `git commit -m "qa: <task_id> attempt <n> — <pass|blocked|infra-blocked|fixed>"`, then `git push`.
+1. **Commit only when you applied a code fix.** Stage only the source files you changed within the task's `path` and `touches[]` workspaces. Do **not** stage anything under `ralph/` — `ralph/qa-report.json`, `ralph/tasks.json`, `ralph/qa-hints.json`, etc. are all gitignored and persist on disk between iterations.
+2. If you committed a code fix, use `git commit -m "qa: <task_id> attempt <n> — fixed" && git push`.
+3. For pass-only, fail-only, partial-only, blocked, or infra-blocked outcomes that do not change source code, do **not** commit. The state lives in `ralph/qa-report.json` and `ralph/tasks.json`, which the watchdog re-reads next iteration.
 4. Emit `<promise>NEXT</promise>` regardless of status — the watchdog reads `qa_pass`, `qa_status`, and the retry counter to decide what to do next.

@@ -74,7 +74,7 @@ one step.
 ## After modifying `tasks.json`
 1. Source code linting is **not needed** here (no source changes).
 2. Append a one-line entry to `plan-progress.txt`: `iter <n>: <mode> — <short summary>`.
-3. `git add ralph/tasks.json ralph/plan-progress.txt && git commit -m "plan: <short summary>" && git push`
+3. **Do not commit.** `ralph/tasks.json`, `ralph/plan-progress.txt`, and `ralph/.plan-complete` are gitignored and persist on disk for the next iteration. The plan phase produces no git history.
 4. Output one of:
    - `<promise>NEXT</promise>` — more plan work remains.
    - `<promise>PLAN_COMPLETE</promise>` — backlog is ready for the build phase.
