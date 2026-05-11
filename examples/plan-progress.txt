@@ -28,10 +28,9 @@ Atomic unit candidates:
 
 iter 1: MODE A — scope analysis 작성, refresh-token 회전 작업의 영향 표면과 결정사항 기록
 iter 2: MODE B — bootstrap, 분석 기반으로 LIB-001/API-014/WEB-007 3개 task 생성
-iter 3: MODE D — LIB-001의 acceptance에 만료 토큰 케이스 추가 (description이 너무 짧았음)
-iter 4: MODE D — API-014의 dependent_on에 LIB-001 추가, touches[]에 @your-org/auth 추가
-iter 5: MODE E — coverage map 작성, 모든 raw 요구사항이 task로 매핑됨 확인
-iter 6: MODE F — plan 완료, .plan-complete 생성
+iter 3: MODE C — LIB-001의 acceptance에 만료 토큰 케이스 추가 (description이 너무 짧았음, 필드 트리거)
+iter 4: MODE C — API-014의 dependent_on에 LIB-001 추가, touches[]에 @your-org/auth 추가 (필드 트리거)
+iter 5: MODE D — coverage map 작성, 모든 raw 요구사항이 task로 매핑돼 .plan-complete 생성
 
 ## Coverage map
 refresh 토큰 회전 헬퍼 → LIB-001

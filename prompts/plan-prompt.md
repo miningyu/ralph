@@ -22,9 +22,8 @@ Each invocation refines exactly **one** unit from the backlog and exits.
 
 ## What to do this iteration
 Choose exactly **one** of the following modes (in priority order). Planning is
-deliberately multi-pass: scope analysis → bootstrap → structural review →
-field refinement → coverage close-out → complete. Each iteration moves exactly
-one step.
+deliberately multi-pass: scope analysis → bootstrap → refinement → coverage
+close-out. Each iteration moves exactly one step.
 
 - **MODE A — Scope analysis (must run before bootstrap):** `tasks.json` is empty or `[]` AND `plan-progress.txt` does NOT yet contain a `## Scope analysis` block.
 
@@ -56,25 +55,24 @@ one step.
   | Domain-wide test/refactor (e.g., e2e for one module) | 10–30 |
   | Cross-cutting refactor or migration | 30+ |
 
-  When in doubt, prefer **more smaller tasks over fewer larger ones**. Catching oversized tasks later via MODE C/D refinement is expensive and tends to bundle unrelated work; over-decomposition only costs extra QA iterations, which are cheap. Exit after writing the initial backlog.
+  When in doubt, prefer **more smaller tasks over fewer larger ones**. Catching oversized tasks later via MODE C refinement is expensive and tends to bundle unrelated work; over-decomposition only costs extra QA iterations, which are cheap. Exit after writing the initial backlog.
 
-- **MODE C — Structural review (split or merge one task):** No bootstrap pending, but at least one task is structurally problematic. Triggers (in priority order):
+- **MODE C — Refinement (structural or field):** No bootstrap pending, but at least one task has a structural or field issue. Address structural issues first; only when none remain, address field issues. Pick exactly one issue per iteration and exit.
+
+  **Structural triggers (priority 1):**
   1. **Split candidate** — a single task has ≥4 entries in `acceptance[]`, OR touches ≥2 distinct `workspaces` scopes, OR its `description` joins multiple unrelated outcomes with "and" / "및" / "그리고" / "," / "또한".
   2. **Merge candidate** — two sibling tasks share ≥2 identical or paraphrased acceptance items, or their descriptions describe the same outcome from different angles.
 
-  Pick the first violator. Either split into multiple atomic tasks (preserve the original id on the largest piece; assign fresh ids to the new pieces) or merge two tasks into one (drop the duplicate id). Update every `dependent_on` reference that points at affected ids. Exit.
+  For structural fixes: split into multiple atomic tasks (preserve the original id on the largest piece; assign fresh ids to the new pieces) or merge two tasks into one (drop the duplicate id). Update every `dependent_on` reference that points at affected ids.
 
-- **MODE D — Field refinement:** No structural issues remain, but at least one task has a `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, an unverified `scope`, or a missing `context` when the task is a modification/refactor, has non-obvious constraints, or spans multiple workspaces.
-  Pick the first such task. Read the relevant code under its `path`. Tighten the fields. Exit.
+  **Field triggers (priority 2 — only when no structural triggers fire):**
+  - A task has `description` shorter than 40 characters, missing `acceptance`, missing `dependent_on`, an unverified `scope`, or a missing `context` when the task is a modification/refactor, has non-obvious constraints, or spans multiple workspaces.
 
-- **MODE E — Coverage close-out (add one task per uncovered raw item):** No structural or field issues remain.
+  For field fixes: pick the first such task, read the relevant code under its `path`, tighten the fields. Exit.
 
-  Build (or rebuild) a `## Coverage map` block at the bottom of `plan-progress.txt`. For each numbered or bulleted requirement in `tasks.raw.md`, write one line: `<short paraphrase> → <task id(s) that cover it, or UNCOVERED>`. If `tasks.raw.md` is absent, write `## Coverage map\n(no tasks.raw.md — coverage trivially complete)` and fall through to MODE F.
+- **MODE D — Coverage close-out and complete:** No structural or field issues remain. Build (or rebuild) a `## Coverage map` block at the bottom of `plan-progress.txt`. For each numbered or bulleted requirement in `tasks.raw.md`, write one line: `<short paraphrase> → <task id(s) that cover it, or UNCOVERED>`. If `tasks.raw.md` is absent, write `## Coverage map\n(no tasks.raw.md — coverage trivially complete)`.
 
-  If any line is `UNCOVERED`, add exactly one new task to close the first gap and exit. Otherwise the coverage map is complete; exit and let the next iteration enter MODE F.
-
-- **MODE F — Plan complete:** All tasks have a verified scope, ≥1 acceptance criterion, resolved dependencies, and the latest `## Coverage map` block in `plan-progress.txt` contains zero `UNCOVERED` lines (or notes the absence of `tasks.raw.md`).
-  Touch `ralph/.plan-complete` and emit `<promise>PLAN_COMPLETE</promise>`.
+  If any line is `UNCOVERED`, add exactly one new task to close the first gap and exit with `<promise>NEXT</promise>`. Otherwise the coverage map is clean: touch `ralph/.plan-complete` and emit `<promise>PLAN_COMPLETE</promise>` in the same iteration.
 
 ## After modifying `tasks.json`
 1. Source code linting is **not needed** here (no source changes).

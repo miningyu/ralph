@@ -22,9 +22,8 @@
 
 ## 이번 반복(iteration)에서 할 일
 다음 모드 중 정확히 **하나**를 선택하세요(우선순위 순). Planning은
-의도적으로 다중 패스로 진행됩니다: scope analysis → bootstrap → 구조 검토 →
-필드 정제 → 커버리지 마무리 → 완료. 각 반복은 정확히
-한 단계만 진행합니다.
+의도적으로 다중 패스로 진행됩니다: scope analysis → bootstrap → 정제 →
+커버리지 마무리. 각 반복은 정확히 한 단계만 진행합니다.
 
 - **MODE A — Scope analysis (bootstrap 전에 반드시 실행):** `tasks.json`이 비어 있거나 `[]`이면서 `plan-progress.txt`에 `## Scope analysis` 블록이 아직 없는 경우.
 
@@ -56,25 +55,24 @@
   | 도메인 전체 테스트/리팩터 (예: 한 모듈의 e2e) | 10–30 |
   | 횡단 리팩터 또는 마이그레이션 | 30+ |
 
-  애매하면 **적은 큰 task보다 많은 작은 task를 선호하세요**. 큰 task를 나중에 MODE C/D 정제로 잡아내는 것은 비싸고 무관한 작업을 묶는 경향이 있는 반면, 과도한 분해는 약간의 추가 QA 반복만 들 뿐이며 그건 저렴합니다. 초기 백로그 작성 후 종료.
+  애매하면 **적은 큰 task보다 많은 작은 task를 선호하세요**. 큰 task를 나중에 MODE C 정제로 잡아내는 것은 비싸고 무관한 작업을 묶는 경향이 있는 반면, 과도한 분해는 약간의 추가 QA 반복만 들 뿐이며 그건 저렴합니다. 초기 백로그 작성 후 종료.
 
-- **MODE C — 구조 검토 (한 task를 분할 또는 병합):** bootstrap이 보류 중이 아니지만 적어도 하나의 task가 구조적으로 문제가 있는 경우. 트리거(우선순위 순):
+- **MODE C — 정제 (구조 또는 필드):** bootstrap이 보류 중이 아니지만 적어도 하나의 task에 구조적 또는 필드 이슈가 있는 경우. 구조적 이슈를 먼저 처리하고, 모두 해결된 후에만 필드 이슈를 처리하세요. 한 반복(iteration)당 정확히 하나의 이슈를 선택하고 종료.
+
+  **구조적 트리거 (우선순위 1):**
   1. **분할 후보** — 단일 task가 `acceptance[]`에 ≥4개 항목을 가지거나, ≥2개의 별개의 `workspaces` scope를 건드리거나, `description`이 "and" / "및" / "그리고" / "," / "또한"으로 여러 무관한 결과를 결합한 경우.
   2. **병합 후보** — 두 형제 task가 ≥2개의 동일하거나 다른 말로 표현된 acceptance 항목을 공유하거나, description이 같은 결과를 다른 각도에서 묘사하는 경우.
 
-  첫 번째 위반자를 선택하세요. 여러 원자적 task로 분할하거나(가장 큰 조각에 원래 id 보존; 새 조각에는 새 id 할당), 두 task를 하나로 병합하세요(중복 id 제거). 영향 받은 id를 가리키는 모든 `dependent_on` 참조를 업데이트하세요. 종료.
+  구조적 수정: 여러 원자적 task로 분할하거나(가장 큰 조각에 원래 id 보존; 새 조각에는 새 id 할당), 두 task를 하나로 병합하세요(중복 id 제거). 영향 받은 id를 가리키는 모든 `dependent_on` 참조를 업데이트하세요.
 
-- **MODE D — 필드 정제:** 구조적 이슈가 남아있지 않지만 적어도 하나의 task가 `description`이 40자 미만이거나, `acceptance`가 누락되었거나, `dependent_on`이 누락되었거나, `scope`가 미검증이거나, task가 수정/리팩터/비명시적 제약/여러 workspace에 해당하는데 `context`가 누락된 경우.
-  그런 첫 번째 task를 선택하세요. 그 task의 `path` 아래 관련 코드를 읽으세요. 필드를 조이세요(tighten). 종료.
+  **필드 트리거 (우선순위 2 — 구조적 트리거가 없을 때만):**
+  - 적어도 하나의 task가 `description`이 40자 미만이거나, `acceptance`가 누락되었거나, `dependent_on`이 누락되었거나, `scope`가 미검증이거나, task가 수정/리팩터/비명시적 제약/여러 workspace에 해당하는데 `context`가 누락된 경우.
 
-- **MODE E — 커버리지 마무리 (커버되지 않은 raw 항목당 하나의 task 추가):** 구조적 또는 필드 이슈가 남아있지 않은 경우.
+  필드 수정: 그런 첫 번째 task를 선택하고, 그 task의 `path` 아래 관련 코드를 읽으세요. 필드를 조이세요(tighten). 종료.
 
-  `plan-progress.txt`의 맨 아래에 `## Coverage map` 블록을 빌드(또는 재빌드)하세요. `tasks.raw.md`의 각 번호 매겨진 또는 글머리 기호 요구사항에 대해 한 줄을 작성: `<짧은 의역> → <그것을 커버하는 task id, 또는 UNCOVERED>`. `tasks.raw.md`가 없으면 `## Coverage map\n(no tasks.raw.md — coverage trivially complete)`를 작성하고 MODE F로 넘어가세요.
+- **MODE D — 커버리지 마무리 및 완료:** 구조적 또는 필드 이슈가 남아있지 않은 경우. `plan-progress.txt`의 맨 아래에 `## Coverage map` 블록을 빌드(또는 재빌드)하세요. `tasks.raw.md`의 각 번호 매겨진 또는 글머리 기호 요구사항에 대해 한 줄을 작성: `<짧은 의역> → <그것을 커버하는 task id, 또는 UNCOVERED>`. `tasks.raw.md`가 없으면 `## Coverage map\n(no tasks.raw.md — coverage trivially complete)`를 작성하세요.
 
-  어떤 줄이라도 `UNCOVERED`이면, 첫 번째 갭을 닫기 위해 정확히 하나의 새 task를 추가하고 종료. 그렇지 않으면 커버리지 맵이 완료된 것이며, 종료하고 다음 반복이 MODE F에 진입하도록 합니다.
-
-- **MODE F — Plan complete:** 모든 task가 검증된 scope, ≥1 acceptance criterion, 해결된 의존성을 가지며, `plan-progress.txt`의 가장 최근 `## Coverage map` 블록에 `UNCOVERED` 줄이 없거나 `tasks.raw.md`의 부재가 명시된 경우.
-  `ralph/.plan-complete`를 touch하고 `<promise>PLAN_COMPLETE</promise>`을 emit하세요.
+  어떤 줄이라도 `UNCOVERED`이면, 첫 번째 갭을 닫기 위해 정확히 하나의 새 task를 추가하고 `<promise>NEXT</promise>`로 종료. 그렇지 않으면 커버리지 맵이 깨끗한 것입니다: 같은 iteration에서 `ralph/.plan-complete`를 touch하고 `<promise>PLAN_COMPLETE</promise>`을 emit하세요.
 
 ## `tasks.json` 수정 후
 1. 소스 코드 린팅은 여기서 **불필요합니다** (소스 변경 없음).
