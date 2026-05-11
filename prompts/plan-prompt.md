@@ -45,15 +45,7 @@ close-out. Each iteration moves exactly one step.
 
   Write context when the task (a) modifies/refactors existing code, (b) has non-obvious constraints from the scope analysis, (c) is bound by multiple decisions, or (d) spans several workspaces. Skip it for trivial new features where description + acceptance is self-explanatory.
 
-  Emit as many tasks as the work demands — **there is no upper bound**.
-  Calibration ranges (use as guidance, not as caps):
-
-  | Scope of work | Typical task count |
-  |---|---|
-  | Trivial change (rename, single field) | 1–2 |
-  | Single-route feature or bug fix | 3–7 |
-  | Domain-wide test/refactor (e.g., e2e for one module) | 10–30 |
-  | Cross-cutting refactor or migration | 30+ |
+  Emit as many tasks as the work demands — **there is no upper bound**. Decompose so each task has **one outcome, one scope, and ≤3 acceptance items**; if any of those feel stretched, split before writing. This matches the MODE C split triggers, so the same bar applies at bootstrap and refinement.
 
   When in doubt, prefer **more smaller tasks over fewer larger ones**. Catching oversized tasks later via MODE C refinement is expensive and tends to bundle unrelated work; over-decomposition only costs extra QA iterations, which are cheap. Exit after writing the initial backlog.
 
